@@ -6,6 +6,8 @@ from jarvis.db.db import get_connection_pool
 from psycopg.rows import dict_row, DictRow
 from os import getenv
 from dotenv import load_dotenv
+from pathlib import Path
+import shutil
 
 
 logger = logging.getLogger(__name__)
@@ -24,6 +26,7 @@ async def run_cleanup():
             await clean_old_personalities()
             await clean_old_question_packs()
             await clean_old_questions()
+            await clean_old_document_packs()
             logger.info("cleanup done")
         except Exception as err:
             logger.error(f"cleanup failed with {err}", exc_info=True)
@@ -103,3 +106,19 @@ async def executor(query: str) -> List[DictRow]:
                 res_future = await cur.execute(query)
                 res = await res_future.fetchall()
     return res
+
+
+async def clean_old_document_packs():
+    query = """
+    DELETE FROM common.question_packs
+    WHERE deleted = TRUE AND updated_at < (CURRENT_DATE - INTERVAL '30 days')
+    RETURNING id
+    """
+
+    logger.info("deleting old document packs...")
+    res = await executor(query)
+    base = Path("/tmp/jarvis")
+    for r in res:
+        to_delete = base / Path(r)
+        logger.info(f"deleting {to_delete}...")
+        shutil.rmtree(to_delete.as_posix(), ignore_errors=True)
