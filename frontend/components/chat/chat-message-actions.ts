@@ -16,7 +16,7 @@ async function updateMessageLikeHandler(id: string, liked: boolean | null) {
   try {
     const res = await sql.begin((sql) => [
       sql`
-      UPDATE talk_to_your_pid.message_history
+      UPDATE common.message_history
       SET liked = ${liked}
       WHERE id = ${id}
       RETURNING id

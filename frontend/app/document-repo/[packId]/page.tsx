@@ -6,7 +6,7 @@ import { listDocuments } from "@/components/document-packs/document-packs-action
 import { Sidebar } from "@/components/sidebar/chat-sidebar";
 import { AlertDialog, AlertDialogContent } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { IconCheck, IconSpinner } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
@@ -15,7 +15,8 @@ import { useSocket } from "@/lib/hooks/use-socket";
 import { useToast } from "@/lib/hooks/use-toast";
 import { uuidv4 } from "@/lib/utils";
 import { useUser } from "@auth0/nextjs-auth0";
-import { RefetchQueryFilters, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { DialogTitle } from "@radix-ui/react-dialog";
+import { RefetchQueryFilters, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { HashLoader } from "react-spinners";
@@ -23,12 +24,7 @@ import remarkGfm from "remark-gfm";
 
 interface ReadResp {
     data: string | ArrayBuffer | null
-    fname: string
-}
-
-interface UploadParams {
-    base64Data: string | ArrayBuffer | null
-    fname: string
+    fname: string | null
 }
 
 interface QueryResp {
@@ -53,6 +49,7 @@ enum Workflow {
 }
 
 export default function Page() {
+    const { user } = useUser();
     const params = useParams<{ packId: string }>();
     const { data, error, isLoading } = useQuery({
         queryKey: ["listPackDocs", params?.packId],
@@ -70,8 +67,6 @@ export default function Page() {
     const [selectedSnippet, setSelectedSnippet] = useState<Sources | null>(null);
     const [snippetDialogOpen, setSnippetDialogOpen] = useState(false);
     const token = useAuthToken();
-    const { user } = useUser();
-
     const socket = useSocket({ socketNamespace: 'jarvis', userId: user?.email, token: token });
     const readFileContent = (file: File): Promise<ReadResp> => {
         return new Promise((resolve, reject) => {
@@ -82,41 +77,7 @@ export default function Page() {
         });
     };
     const queryClient = useQueryClient();
-    const uploadMutation = useMutation({
-        mutationFn: async ({ base64Data, fname }: UploadParams) => {
-            const resp = await fetch("/api/upload", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    base64Data,
-                    path: `document_packs/${params?.packId}/raw/${fname}`,
-                    uploadId: uuidv4(),
-                })
-            });
-            const data = await resp.json();
-            // console.log("upload data", data);
-            if (!resp.ok) {
-                throw new Error(`upload failed: ${JSON.stringify(data)}`);
-            }
-            return { fname };
-        },
-        onSuccess: (resp) => {
 
-        },
-        onError: (error) => {
-            console.error("File upload failed:", error);
-        }
-    }, queryClient);
-    const readMutation = useMutation({
-        mutationFn: (file: File) => readFileContent(file),
-        onSuccess: (resp: ReadResp) => {
-            uploadMutation.mutate({ base64Data: resp.data, fname: resp.fname });
-        },
-        onError: (error) => {
-            console.error(error);
-            toast({ title: "Upload failed", description: "Failed to read the file", duration: Infinity });
-        }
-    }, queryClient);
     const handleUpload = async (files: FileList | null) => {
         setWorkflowStage(Workflow.Upload);
         if (!files) {
@@ -124,13 +85,32 @@ export default function Page() {
         }
         setOpen(true);
         for (let i = 0; i < files.length; i++) {
-            readMutation.mutate(files[i]);
+            let readRes = {} as ReadResp;
+            try {
+                readRes = await readFileContent(files[i]);
+            } catch (error) {
+                console.error(error);
+                toast({ title: "Upload failed", description: "Failed to read the file", duration: Infinity });
+            }
+            const resp = await fetch("/api/upload", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    base64Data: readRes.data,
+                    path: `document_packs/${params?.packId}/raw/${readRes.fname}`,
+                    uploadId: uuidv4(),
+                })
+            });
+            if (!resp.ok) {
+                console.error(`File upload failed: ${JSON.stringify(data)}`);
+                toast({ title: "Upload failed", description: "Failed to upload the file", duration: Infinity });
+            }
         }
         if (inputRef.current) {
             inputRef.current.value = '';
         }
         setWorkflowStage(Workflow.Parse);
-        socket?.emit("parse_docs", { "pack_id": params?.packId }, (resp: string) => {
+        socket?.emit("parse_docs", { "bucket": "fsnlabs-docs", "pack_id": params?.packId }, (resp: string) => {
             if (resp !== "done") {
                 console.error("failed to parse docs");
                 toast({ title: "Failed to parse docs", variant: "destructive" });
@@ -139,7 +119,7 @@ export default function Page() {
             }
             setWorkflowStage(Workflow.Preprocess);
 
-            socket.emit("preprocess_docs", { "pack_id": params?.packId }, (resp: string) => {
+            socket.emit("preprocess_docs", { "bucket": "fsnlabs-docs", "pack_id": params?.packId }, (resp: string) => {
                 if (resp !== "done") {
                     console.error("failed to parse docs");
                     toast({ title: "Failed to preprocess docs", variant: "destructive" });
@@ -148,7 +128,7 @@ export default function Page() {
                 }
                 setWorkflowStage(Workflow.Index);
 
-                socket.emit("index_docs", { "pack_id": params?.packId }, async (resp: string) => {
+                socket.emit("index_docs", { "bucket": "fsnlabs-docs", "pack_id": params?.packId }, async (resp: string) => {
                     if (resp !== "done") {
                         console.error("failed to index docs");
                         toast({ title: "Failed to index docs", variant: "destructive" });
@@ -255,8 +235,8 @@ export default function Page() {
                 </div>
                 <ResizablePanelGroup direction="horizontal">
                     <ResizablePanel defaultSize={30}>
-                        <div className="h-[95vh] px-4">
-                            <div className="max-w-3xl mx-auto p-6 dark:bg-slate-900 shadow-lg rounded-lg mt-10 min-h-[90vh]">
+                        <div className="h-[100vh] px-4 overflow-auto">
+                            <div className="max-w-3xl mx-auto dark:bg-slate-900 shadow-lg rounded-lg py-8 px-6 min-h-[90vh]">
                                 <h1 className="text-2xl font-semibold dark:text-purple-400 mb-4">Documents</h1>
                                 <div className="bg-transparent p-4 rounded-lg w-full space-y-4">
                                     <div className="flex justify-end gap-x-2">
@@ -275,7 +255,7 @@ export default function Page() {
                                                     fill="none"
                                                     xmlns="http://www.w3.org/2000/svg"
                                                 >
-                                                    <path d="M7.81825 1.18188C7.64251 1.00615 7.35759 1.00615 7.18185 1.18188L4.18185 4.18188C4.00611 4.35762 4.00611 4.64254 4.18185 4.81828C4.35759 4.99401 4.64251 4.99401 4.81825 4.81828L7.05005 2.58648V9.49996C7.05005 9.74849 7.25152 9.94996 7.50005 9.94996C7.74858 9.94996 7.95005 9.74849 7.95005 9.49996V2.58648L10.1819 4.81828C10.3576 4.99401 10.6425 4.99401 10.8182 4.81828C10.994 4.64254 10.994 4.35762 10.8182 4.18188L7.81825 1.18188ZM2.5 9.99997C2.77614 9.99997 3 10.2238 3 10.5V12C3 12.5538 3.44565 13 3.99635 13H11.0012C11.5529 13 12 12.5528 12 12V10.5C12 10.2238 12.2239 9.99997 12.5 9.99997C12.7761 9.99997 13 10.2238 13 10.5V12C13 13.104 12.1062 14 11.0012 14H3.99635C2.89019 14 2 13.103 2 12V10.5C2 10.2238 2.22386 9.99997 2.5 9.99997Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
+                                                    <path d="M7.81825 1.18188C7.64251 1.00615 7.35759 1.00615 7.18185 1.18188L4.18185 4.18188C4.00611 4.35762 4.00611 4.64254 4.18185 4.81828C4.35759 4.99401 4.64251 4.99401 4.81825 4.81828L7.05005 2.58648V9.49996C7.05005 9.74849 7.25152 9.94996 7.50005 9.94996C7.74858 9.94996 7.95005 9.74849 7.95005 9.49996V2.58648L10.1819 4.81828C10.3576 4.99401 10.6425 4.99401 10.8182 4.81828C10.994 4.64254 10.994 4.35762 10.8182 4.18188L7.81825 1.18188ZM2.5 9.99997C2.77614 9.99997 3 10.2238 3 10.5V12C3 12.5538 3.44565 13 3.99635 13H11.0012C11.5529 13 12 12.5528 12 12V10.5C12 10.2238 12.2239 9.99997 12.5 9.99997C12.7761 9.99997 13 10.2238 13 10.5V12C13 13.104 12.1062 14 11.0012 14H3.99635C2.89019 14 2 13.103 2 12V10.5C2 10.2238 2.22386 9.99997 2.5 9.99997Z" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"></path>
                                                 </svg>
                                                 <span className="pr-2">Upload Document</span>
                                             </>
@@ -393,11 +373,12 @@ export default function Page() {
                                                             <Button
                                                                 variant="outline"
                                                                 key={i}
+                                                                className="max-w-full truncate"
                                                                 onClick={() => {
                                                                     setSelectedSnippet(r);
                                                                     setSnippetDialogOpen(true);
                                                                 }}>
-                                                                {`Snippet ${i + 1} (${r.document_title})`}
+                                                                <span className="truncate inline-block max-w-full">{`Snippet ${i + 1} (${r.document_title})`}</span>
                                                             </Button>
                                                         );
                                                     })}
