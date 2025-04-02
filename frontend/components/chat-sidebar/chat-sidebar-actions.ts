@@ -23,7 +23,7 @@ async function listChatsHandler(userId: string) {
         title,
         created_at AS createdAt, 
         updated_at AS updatedAt 
-    FROM talk_to_your_pid.chat_history 
+    FROM common.chat_history 
     WHERE owner_email = ${userId} AND deleted = false
     ORDER BY updated_at DESC
     `;
@@ -58,7 +58,7 @@ async function deleteChatsHandler(userId: string) {
     try {
         const res = await sql.begin((sql) => [
             sql`
-            UPDATE talk_to_your_pid.chat_history 
+            UPDATE common.chat_history 
             SET deleted = true 
             WHERE owner_email = ${userId}
             RETURNING id
@@ -86,7 +86,7 @@ async function updateChatTitleHandler(chatId: string, userId: string, newTitle: 
     try {
         const res = await sql.begin((sql) => [
             sql`
-            UPDATE talk_to_your_pid.chat_history
+            UPDATE common.chat_history
             SET title = ${newTitle}
             WHERE id = ${chatId}
             RETURNING id
@@ -113,7 +113,7 @@ async function deleteChatHandler(chatId: string, userId: string) {
     try {
         const res = await sql.begin((sql) => [
             sql`
-            UPDATE talk_to_your_pid.chat_history 
+            UPDATE common.chat_history 
             SET deleted = true 
             WHERE id = ${chatId}
             RETURNING id

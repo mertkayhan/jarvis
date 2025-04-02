@@ -36,6 +36,35 @@ END;
 $$;
 
 -- Tables with Constraints and Foreign Keys 
+CREATE TABLE IF NOT EXISTS common.model_selection (
+    user_id text NOT NULL,
+    model_name text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    PRIMARY KEY (user_id)
+);
+
+CREATE TABLE IF NOT EXISTS common.personalities (
+    id uuid NOT NULL,
+    owner text NOT NULL,
+    name text NOT NULL,
+    description text NOT NULL,
+    instructions text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    parent_id uuid,
+    deleted boolean DEFAULT false NOT NULL,
+    tools text[],
+    doc_ids text[],
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS common.default_personalities (
+    user_id text NOT NULL,
+    personality_id uuid NOT NULL,
+    PRIMARY KEY (user_id)
+);
+
 CREATE TABLE IF NOT EXISTS common.checkpoint_blobs (
     thread_id text NOT NULL,
     checkpoint_ns text DEFAULT ''::text NOT NULL,
@@ -96,7 +125,18 @@ CREATE TABLE IF NOT EXISTS common.document_packs (
   description text NOT NULL,
   name text NOT NULL,
   PRIMARY KEY(id)
-)
+);
+
+CREATE TABLE IF NOT EXISTS common.question_packs (
+    id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    deleted boolean DEFAULT false NOT NULL,
+    owner text NOT NULL,
+    description text NOT NULL,
+    name text NOT NULL,
+    PRIMARY KEY(id)
+);
 
 CREATE TABLE IF NOT EXISTS common.question_pairs (
     id uuid NOT NULL,
@@ -112,6 +152,38 @@ CREATE TABLE IF NOT EXISTS common.question_pairs (
     question_tsv tsvector GENERATED ALWAYS AS (to_tsvector('english', question)) STORED,
     PRIMARY KEY (id),
     CONSTRAINT question_pairs_pack_id_fkey FOREIGN KEY (pack_id) REFERENCES common.question_packs(id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS common.question_tags (
+    id uuid NOT NULL,
+    question_id uuid NOT NULL,
+    tag text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    pack_id uuid NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT question_tags_question_id_fkey FOREIGN KEY (question_id) REFERENCES common.question_pairs(id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS common.question_additional_info (
+    id uuid NOT NULL,
+    question_id uuid NOT NULL,
+    key text NOT NULL,
+    value text NOT NULL,
+    pack_id uuid NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT question_additional_info_question_id_fkey FOREIGN KEY (question_id) REFERENCES common.question_pairs(id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS common.question_history (
+    id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    operation text NOT NULL,
+    prev_value text NOT NULL,
+    current_value text NOT NULL,
+    user_id text NOT NULL,
+    question_id uuid NOT NULL,
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE IF NOT EXISTS common.chat_history (
@@ -144,6 +216,10 @@ CREATE TABLE IF NOT EXISTS common.message_history (
 );
 
 -- Indexes
+CREATE INDEX IF NOT EXISTS question_history_question_id_index ON common.question_history USING btree (question_id);
+CREATE INDEX IF NOT EXISTS checkpoint_blobs_thread_id_idx ON common.checkpoint_blobs USING btree (thread_id);
+CREATE INDEX IF NOT EXISTS checkpoint_writes_thread_id_idx ON common.checkpoint_writes USING btree (thread_id);
+CREATE INDEX IF NOT EXISTS checkpoints_thread_id_idx ON common.checkpoints USING btree (thread_id);
 CREATE INDEX IF NOT EXISTS document_repo_user_index ON common.document_repo USING btree (owner);
 CREATE INDEX IF NOT EXISTS question_pairs_question_embedding_idx ON common.question_pairs USING hnsw (question_embedding common.vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS question_tsv_idx ON common.question_pairs USING gin (question_tsv);
@@ -151,6 +227,53 @@ CREATE INDEX IF NOT EXISTS chat_history_user_index ON common.chat_history USING 
 CREATE INDEX IF NOT EXISTS message_history_chat_index ON common.message_history USING btree (chat_id);
 
 -- Triggers
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'set_common_document_repo_updated_at'
+      AND tgrelid = 'common.document_repo'::regclass
+  ) THEN
+    EXECUTE 'CREATE TRIGGER set_common_question_tags_updated_at BEFORE UPDATE ON common.question_tags FOR EACH ROW EXECUTE FUNCTION common.set_current_timestamp_updated_at()';
+  END IF;
+END $$;
+
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'set_common_document_repo_updated_at'
+      AND tgrelid = 'common.document_repo'::regclass
+  ) THEN
+    EXECUTE 'CREATE TRIGGER set_common_model_selection_updated_at BEFORE UPDATE ON common.model_selection FOR EACH ROW EXECUTE FUNCTION common.set_current_timestamp_updated_at()';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'set_common_document_repo_updated_at'
+      AND tgrelid = 'common.document_repo'::regclass
+  ) THEN
+    EXECUTE 'CREATE TRIGGER set_common_personalities_updated_at BEFORE UPDATE ON common.personalities FOR EACH ROW EXECUTE FUNCTION common.set_current_timestamp_updated_at()';
+  END IF;
+END $$;
+
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'set_common_document_repo_updated_at'
+      AND tgrelid = 'common.document_repo'::regclass
+  ) THEN
+    EXECUTE 'CREATE TRIGGER set_common_question_packs_updated_at BEFORE UPDATE ON common.question_packs FOR EACH ROW EXECUTE FUNCTION common.set_current_timestamp_updated_at()';
+  END IF;
+END $$;
+
+
 DO $$
 BEGIN
   IF NOT EXISTS (

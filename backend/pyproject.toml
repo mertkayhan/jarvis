@@ -24,6 +24,7 @@ markdown = "==3.7"
 markdownify = "==0.14.1"
 numpy = "==1.26.4"
 pillow = "==10.2.0"
+psycopg = {version = "==3.2.6", extras = ["binary", "pool"]}
 python = ">=3.10,<3.13"
 python-dotenv = "^1.0.0"
 python-socketio = "==5.11.1"
