@@ -14,7 +14,7 @@ import { useAuthToken } from "@/lib/hooks/use-auth-token";
 import { useSocket } from "@/lib/hooks/use-socket";
 import { useToast } from "@/lib/hooks/use-toast";
 import { uuidv4 } from "@/lib/utils";
-import { useUser } from "@auth0/nextjs-auth0";
+import { useUser } from '@auth0/nextjs-auth0/client';
 import { DialogTitle } from "@radix-ui/react-dialog";
 import { RefetchQueryFilters, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";

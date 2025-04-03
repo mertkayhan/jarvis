@@ -5,7 +5,7 @@ import { useEffect } from "react"
 import { Questions } from "@/components/question-packs/questions"
 import { redirect, useSearchParams, useRouter } from "next/navigation"
 import { useToast } from "@/lib/hooks/use-toast"
-import { useUser } from '@auth0/nextjs-auth0';
+import { useUser } from '@auth0/nextjs-auth0/client';
 import Loading from "@/app/loading"
 
 export default function Page() {

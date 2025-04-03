@@ -6,7 +6,7 @@ import { chatIdReducer } from "@/components/chat/chat-reducers";
 import { useAuthToken } from "@/lib/hooks/use-auth-token";
 import { useSocket } from "@/lib/hooks/use-socket";
 import { uuidv4 } from "@/lib/utils";
-import { useUser } from "@auth0/nextjs-auth0";
+import { useUser } from '@auth0/nextjs-auth0/client';
 import { Reducer, useReducer } from "react";
 
 export default function Page() {

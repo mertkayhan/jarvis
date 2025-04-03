@@ -53,7 +53,7 @@ async function getChatTitleHandler(id: string) {
     const getTitle = sql`
     SELECT
         title
-    FROM talk_to_your_pid.chat_history
+    FROM common.chat_history
     WHERE id = ${id}
     `;
     try {
@@ -87,7 +87,7 @@ async function loadMessageHistoryHandler(chatId: string) {
         score,
         updated_at,
         context 
-    FROM talk_to_your_pid.message_history
+    FROM common.message_history
     WHERE chat_id = ${chatId} AND role IN ('user', 'assistant')
     ORDER BY created_at ASC
     `;
@@ -122,7 +122,7 @@ async function removeMessageHandler(messageId: string) {
     try {
         const res = await sql.begin((sql) => [
             sql`
-            DELETE FROM talk_to_your_pid.message_history 
+            DELETE FROM common.message_history 
             WHERE id = ${messageId}
             RETURNING id
             `
