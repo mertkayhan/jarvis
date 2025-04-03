@@ -31,10 +31,14 @@ export default function Page() {
         }
     }, [searchParams]);
 
-    if (isLoading || !searchParams?.get("pack_id") || !searchParams?.get("page")) {
+    if (isLoading) {
         return (
             <Loading />
         )
+    }
+
+    if (error || !searchParams?.get("pack_id") || !searchParams?.get("page")) {
+        router.push("/forbidden");
     }
 
     return (
