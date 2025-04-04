@@ -1,6 +1,6 @@
 'use client'
 
-import { useUser } from '@auth0/nextjs-auth0';
+import { useUser } from '@auth0/nextjs-auth0/client';
 import Loading from '@/app/loading';
 import { Dispatch, Reducer, useEffect, useReducer, useState } from 'react';
 import { Chat } from '@/components/chat/chat'

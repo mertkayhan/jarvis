@@ -6,7 +6,8 @@ import { chatIdReducer } from "@/components/chat/chat-reducers";
 import { useAuthToken } from "@/lib/hooks/use-auth-token";
 import { useSocket } from "@/lib/hooks/use-socket";
 import { uuidv4 } from "@/lib/utils";
-import { useUser } from "@auth0/nextjs-auth0";
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { useRouter } from "next/navigation";
 import { Reducer, useReducer } from "react";
 
 export default function Page() {
@@ -14,9 +15,14 @@ export default function Page() {
     const token = useAuthToken();
     const socket = useSocket({ socketNamespace: "jarvis", userId: user?.email, token });
     const [id, dispatch] = useReducer<Reducer<string, any>>(chatIdReducer, uuidv4());
+    const router = useRouter();
 
     if (isLoading) {
         return <Loading />;
+    }
+
+    if (error) {
+        router.push("/forbidden");
     }
 
     return (

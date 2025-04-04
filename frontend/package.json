@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@auth0/nextjs-auth0": "^4.3.0",
+    "@auth0/nextjs-auth0": "^3.7.0",
     "@bomdi/codebox": "^2.0.0",
     "@codemirror/lang-html": "^6.4.9",
     "@codemirror/language": "^6.10.8",

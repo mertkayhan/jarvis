@@ -3,7 +3,6 @@
 import { Dispatch, SetStateAction } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { Button } from "../ui/button";
-import { auth0 } from "@/lib/auth0";
 
 interface ChatButtonProps {
     moduleName: string
@@ -49,7 +48,7 @@ export function LogOutButton() {
         <Tooltip>
             <TooltipTrigger asChild>
                 <a
-                    href={"/auth/logout"}
+                    href={"/api/auth/logout"}
                     className="rounded-lg hover:bg-slate-200 p-1.5 text-slate-600 transition-colors duration-200 dark:hover:bg-slate-800 dark:text-slate-200"
                 >
                     <svg

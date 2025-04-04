@@ -1,26 +1,20 @@
 import { NextResponse } from 'next/server'
 import { NextRequest } from 'next/server'
-import { auth0 } from './lib/auth0';
+import { withMiddlewareAuthRequired, getSession } from '@auth0/nextjs-auth0/edge';
+
+
+export default withMiddlewareAuthRequired(middleware);
 
 
 
 
-export async function middleware(request: NextRequest) {
-    const authRes = await auth0.middleware(request);
-
-    if (request.nextUrl.pathname.startsWith("/auth")) {
-        return authRes;
-    }
-
-    const session = await auth0.getSession(request);
+async function middleware(req: NextRequest) {
+    const resp = NextResponse.next();
+    const session = await getSession(req, resp);
 
     if (!session) {
-        // user is not authenticated, redirect to login page
-        return NextResponse.redirect(new URL("/auth/login", request.nextUrl.origin));
+        return NextResponse.redirect(new URL('/api/auth/login', req.url));
     }
-
-    // the headers from the auth middleware should always be returned
-    return authRes;
 }
 
 export const config = {

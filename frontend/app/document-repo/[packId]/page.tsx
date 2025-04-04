@@ -14,10 +14,10 @@ import { useAuthToken } from "@/lib/hooks/use-auth-token";
 import { useSocket } from "@/lib/hooks/use-socket";
 import { useToast } from "@/lib/hooks/use-toast";
 import { uuidv4 } from "@/lib/utils";
-import { useUser } from "@auth0/nextjs-auth0";
+import { useUser } from '@auth0/nextjs-auth0/client';
 import { DialogTitle } from "@radix-ui/react-dialog";
 import { RefetchQueryFilters, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { HashLoader } from "react-spinners";
 import remarkGfm from "remark-gfm";
@@ -48,8 +48,13 @@ enum Workflow {
     Finalize,
 }
 
+function useUserHook() {
+    const { user, isLoading, error } = useUser();
+    return { user, userLoading: isLoading, userError: error };
+}
+
 export default function Page() {
-    const { user } = useUser();
+    const { user, userLoading, userError } = useUserHook();
     const params = useParams<{ packId: string }>();
     const { data, error, isLoading } = useQuery({
         queryKey: ["listPackDocs", params?.packId],
@@ -77,7 +82,7 @@ export default function Page() {
         });
     };
     const queryClient = useQueryClient();
-
+    const router = useRouter();
     const handleUpload = async (files: FileList | null) => {
         setWorkflowStage(Workflow.Upload);
         if (!files) {
@@ -151,10 +156,14 @@ export default function Page() {
         }
     }, [error]);
 
-    if (isLoading) {
+    if (isLoading || userLoading) {
         return (
             <Loading />
         );
+    }
+
+    if (userError) {
+        router.push("/forbidden");
     }
 
     return (
