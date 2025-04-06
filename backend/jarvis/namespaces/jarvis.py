@@ -35,6 +35,7 @@ from jarvis.queries.query_handlers import (
     update_chat,
     get_model_selection,
     update_chat_title,
+    update_document_pack_status,
 )
 from jarvis.context import Context
 import asyncio
@@ -51,6 +52,49 @@ assert DOCUMENT_BUCKET, "DOCUMENT_BUCKET is not set!"
 
 
 class Jarvis(Base):
+    async def on_join_pack_room(self, sid, data):
+        logger.info(f"{sid} requesting to join room for pack {data['room_id']}")
+        rooms = self.rooms(sid, self.namespace)
+        if data["room_id"] not in rooms:
+            await self.enter_room(sid, data["room_id"], self.namespace)
+
+    async def on_build_document_pack(self, sid, data):
+        try:
+            rooms = self.rooms(sid, self.namespace)
+            if data["pack_id"] not in rooms: 
+                await self.enter_room(sid, data["pack_id"], self.namespace)
+            await update_document_pack_status(data["pack_id"], "parsing")
+            await self.emit("workflow_update", {"stage": "parsing"}, room=data["pack_id"])
+            res = await self._parse_docs(data)
+            if res == "fail":
+                await update_document_pack_status(data["pack_id"], "fail")
+                await self.emit("workflow_update", {"stage": "fail"}, room=data["pack_id"])
+                return "fail"
+            else:
+                await update_document_pack_status(data["pack_id"], "preprocessing")
+                await self.emit("workflow_update", {"stage": "preprocessing"}, room=data["pack_id"])
+            res = await self._preprocess_docs(data)
+            if res == "fail":
+                await update_document_pack_status(data["pack_id"], "fail")
+                await self.emit("workflow_update", {"stage": "fail"}, room=data["pack_id"])
+                return "fail"
+            else: 
+                await update_document_pack_status(data["pack_id"], "indexing")
+                await self.emit("workflow_update", {"stage": "indexing"}, room=data["pack_id"])
+            res = await self._index_docs(data)
+            if res == "fail":
+                await update_document_pack_status(data["pack_id"], "fail")
+                await self.emit("workflow_update", {"stage": "fail"}, room=data["pack_id"])
+                return "fail"
+            else: 
+                await self.emit("workflow_update", {"stage": "done"}, room=data["pack_id"])
+            await update_document_pack_status(data["pack_id"], "done")
+            return "done"
+        except Exception as err:
+            logger.error(f"document pack creation failed: {err}", exc_info=True)
+            return "fail"
+
+        
     async def on_query_docs(self, sid, data):
         pack_id = data["pack_id"]
         query = data["query"]
@@ -58,7 +102,7 @@ class Jarvis(Base):
         res = await query_documents(pack_id, query)
         return res["local"]
 
-    async def on_parse_docs(self, sid, data):
+    async def _parse_docs(self, data):
         try:
             source_path = f"document_packs/{data['pack_id']}/raw"
             logger.info(f"parsing docs: {source_path}...")
@@ -84,7 +128,7 @@ class Jarvis(Base):
             logger.error(f"failed to parse docs: {err}", exc_info=True)
             return "fail"
 
-    async def on_preprocess_docs(self, sid, data):
+    async def _preprocess_docs(self, data):
         # graph rag does not support markdown well at the moment, so we need to preprocess the data
 
         try:
@@ -107,7 +151,7 @@ class Jarvis(Base):
             logger.error(f"failed to preprocess docs: {err}", exc_info=True)
             return "fail"
 
-    async def on_index_docs(self, sid, data):
+    async def _index_docs(self, data):
         try:
             logger.info(f"indexing docs with pack id: {data['pack_id']}...")
             await index_documents(data["pack_id"], DOCUMENT_BUCKET)

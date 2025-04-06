@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 vertexai.init(project=os.getenv("GOOGLE_PROJECT"), location="europe-west1")
 model = GenerativeModel("gemini-2.0-flash-001")
 
-bucket = asyncio.Queue(maxsize=10)
+bucket = asyncio.Queue(maxsize=100)
 
 
 async def gemini_pdf_processor(src_path: str, target_path: str):

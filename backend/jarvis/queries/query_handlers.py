@@ -103,6 +103,22 @@ async def read_docs(ids: Sequence[str]) -> str:
     return "\n\n".join(out)
 
 
+async def update_document_pack_status(id: str, status: str):
+    query = """
+    UPDATE common.document_packs
+    SET stage = %(status)s
+    WHERE id = %(id)s
+    """
+
+    pool = await get_connection_pool()
+
+    async with pool.connection() as conn:
+        async with conn.transaction():
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(query, {"id": id, "status": status})
+
+
+
 async def update_chat(id, personality, documents):
     query = """
     UPDATE common.chat_history
