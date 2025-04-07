@@ -153,8 +153,12 @@ export function UserMessage({ message }: UserMessageProps) {
         <div
             className="flex-1 overflow-y-auto rounded-xl p-4 text-xs md:text-sm leading-6 text-slate-900 bg-background dark:text-slate-300"
         >
-            <div className="flex max-w-3xl items-center">
-                <MessageContainer message={message} />
+            <div
+                className="mb-4 flex rounded-xl bg-slate-200 px-2 py-6 dark:bg-slate-900 sm:px-4"
+            >
+                <div className="flex max-w-3xl items-center">
+                    <MessageContainer message={message} />
+                </div>
             </div>
         </div>
     )
@@ -176,12 +180,8 @@ export function AIMessage({ message, streaming, onCopy, isCopied, liked, setLike
             <div
                 className="flex-1 overflow-wrap rounded-xl p-4 text-xs md:text-sm leading-6 text-slate-900 bg-background dark:text-slate-300"
             >
-                <div
-                    className="mb-4 flex rounded-xl bg-slate-50 px-2 py-6 dark:bg-slate-900 sm:px-4"
-                >
-                    <div className="flex max-w-3xl items-center rounded-xl">
-                        <MessageContainer message={message} />
-                    </div>
+                <div className={`flex max-w-3xl items-start rounded-xl pb-4`}>
+                    <MessageContainer message={message} />
                 </div>
                 {!streaming && (
                     <div className="mb-2 flex w-full flex-row justify-start gap-x-2 text-slate-500">
@@ -328,7 +328,7 @@ export function AIMessage({ message, streaming, onCopy, isCopied, liked, setLike
                         </TooltipProvider>
                     </div>
                 )}
-            </div>
+            </div >
         </>
     )
 }
