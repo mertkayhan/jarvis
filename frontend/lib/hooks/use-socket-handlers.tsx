@@ -32,7 +32,7 @@ export function useSocketHandlers(
     const moveChatUp = async (respId: string) => {
         // console.log("moving chat up");
         await queryClient.setQueryData(["listChats", userId], (old: ListChatsResp) => {
-            if (!old.chats) {
+            if (!old || !old?.chats) {
                 return;
             }
             const index = old.chats.findIndex(chat => chat.id === respId);
@@ -76,6 +76,7 @@ export function useSocketHandlers(
                         }
                     }
                 }
+                socket?.emit("join_chat_room", { "room_id": id });
                 setInitialized(true);
                 // console.log("Initialized with chat id");
             } catch (error) {
@@ -97,7 +98,7 @@ export function useSocketHandlers(
             setSelectedQuestionPack(null);
             setSelectedDocumentPack(null);
         }
-    }, [id]);
+    }, [id, socket]);
 
     useEffect(() => {
         if (!socket) {

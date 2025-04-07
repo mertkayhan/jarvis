@@ -73,7 +73,7 @@ export function Chat({
     const reload = reloadFn(id, socket, setLoading, messages, setMessages);
     const generateFollowUp = generateFollowUpFn(socket, append, id, userId);
 
-    console.log("connected", socket?.connected);
+    // console.log("connected", socket?.connected);
 
     // console.log("is loading", isLoading);
 

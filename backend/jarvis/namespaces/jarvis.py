@@ -54,9 +54,7 @@ assert DOCUMENT_BUCKET, "DOCUMENT_BUCKET is not set!"
 class Jarvis(Base):
     async def on_join_pack_room(self, sid, data):
         logger.info(f"{sid} requesting to join room for pack {data['room_id']}")
-        rooms = self.rooms(sid, self.namespace)
-        if data["room_id"] not in rooms:
-            await self.enter_room(sid, data["room_id"], self.namespace)
+        await self._room_resolver(sid, data["room_id"])
 
     async def on_build_document_pack(self, sid, data):
         try:
@@ -244,8 +242,6 @@ class Jarvis(Base):
         # create chat
         if d.get("first_message"):
             await self._create_chat(chat_id, user_id, sid)
-        # create chat room
-        await self._room_resolver(sid, chat_id)
         # broadcast message to other participants
         await self.emit(
             "chat_broadcast", data, room=chat_id, skip_sid=sid, namespace=self.namespace
@@ -340,9 +336,13 @@ class Jarvis(Base):
             await self.emit(
                 "autogen_chat_title",
                 {"new_title": title, "chat_id": chat_id, "user_id": user_id},
-                to=sid,
+                to=sid,  # the person who created the chat should get this
                 namespace=self.namespace,
             )
+
+    async def on_join_chat_room(self, sid, data):
+        logger.info(f"{sid} requesting to join chat room {data['room_id']}")
+        await self._room_resolver(sid, data["room_id"])
 
     async def on_generate_chat_title(self, sid, data):
         try:
