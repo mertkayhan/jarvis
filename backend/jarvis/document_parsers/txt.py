@@ -1,12 +1,13 @@
 import gcsfs
 from os import getenv
+from jarvis.document_parsers.type import ProcessingResult
 from jarvis.document_parsers.utils import count_tokens
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
-def process_txt(src_path: str, target_path: str):
+def process_txt(src_path: str, target_path: str) -> ProcessingResult:
     fs = gcsfs.GCSFileSystem(project=getenv("GOOGLE_PROJECT"), cache_timeout=0)
 
     with fs.open(src_path, "rb") as f:
@@ -19,4 +20,6 @@ def process_txt(src_path: str, target_path: str):
     except UnicodeDecodeError:
         content = raw_content.decode("windows-1252")  # Handle non-UTF-8 files
 
-    return None, count_tokens(content)
+    return ProcessingResult(
+        document_name=src_path, num_tokens=count_tokens(content), failed=False
+    )

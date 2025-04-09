@@ -1,17 +1,13 @@
 import os
 from uuid import uuid4
-from jarvis.blob_storage.storage import must_list
 from jarvis.chat.chat_title import create_chat_title
 from jarvis.context.context import FaithfullnessParams
-from jarvis.document_parsers.csv import process_csv
-from jarvis.document_parsers.gemini import gemini_pdf_processor
-from jarvis.document_parsers.llamaparse import document_handler
-from jarvis.document_parsers.txt import process_txt
-from jarvis.graphrag.graphrag import index_documents, query_documents
+from jarvis.document_parsers.parser import resolve_parser
+from jarvis.graphrag.graphrag import query_documents
 import logging
 from dotenv import load_dotenv
 import json
-from jarvis.graphrag.preprocess import preprocess_docs
+from jarvis.graphrag.workflow import execute_workflow
 from jarvis.messages.utils import (
     build_system_message,
     build_user_message,
@@ -29,7 +25,6 @@ from jarvis.queries.query_handlers import (
     get_doc_tokens,
     get_message_history,
     insert_doc,
-    insert_doc_into_pack,
     read_docs_helper,
     set_chat_model,
     update_chat,
@@ -40,8 +35,6 @@ from jarvis.queries.query_handlers import (
 from jarvis.context import Context
 import asyncio
 from jarvis.models.models import model_factory
-from pathlib import Path
-import pandas as pd
 
 
 load_dotenv()
@@ -59,40 +52,26 @@ class Jarvis(Base):
     async def on_build_document_pack(self, sid, data):
         try:
             rooms = self.rooms(sid, self.namespace)
-            if data["pack_id"] not in rooms: 
+            if data["pack_id"] not in rooms:
                 await self.enter_room(sid, data["pack_id"], self.namespace)
             await update_document_pack_status(data["pack_id"], "parsing")
-            await self.emit("workflow_update", {"stage": "parsing"}, room=data["pack_id"])
-            res = await self._parse_docs(data)
-            if res == "fail":
-                await update_document_pack_status(data["pack_id"], "fail")
-                await self.emit("workflow_update", {"stage": "fail"}, room=data["pack_id"])
-                return "fail"
-            else:
-                await update_document_pack_status(data["pack_id"], "preprocessing")
-                await self.emit("workflow_update", {"stage": "preprocessing"}, room=data["pack_id"])
-            res = await self._preprocess_docs(data)
-            if res == "fail":
-                await update_document_pack_status(data["pack_id"], "fail")
-                await self.emit("workflow_update", {"stage": "fail"}, room=data["pack_id"])
-                return "fail"
-            else: 
-                await update_document_pack_status(data["pack_id"], "indexing")
-                await self.emit("workflow_update", {"stage": "indexing"}, room=data["pack_id"])
-            res = await self._index_docs(data)
-            if res == "fail":
-                await update_document_pack_status(data["pack_id"], "fail")
-                await self.emit("workflow_update", {"stage": "fail"}, room=data["pack_id"])
-                return "fail"
-            else: 
-                await self.emit("workflow_update", {"stage": "done"}, room=data["pack_id"])
-            await update_document_pack_status(data["pack_id"], "done")
+            await self.emit(
+                "workflow_update", {"stage": "parsing"}, room=data["pack_id"]
+            )
+            async for result in execute_workflow(data):
+                await update_document_pack_status(
+                    data["pack_id"], result["message"]["stage"]
+                )
+                await self.emit(
+                    "workflow_update", result["message"], room=data["pack_id"]
+                )
+                if result["failed"]:
+                    return "fail"
             return "done"
         except Exception as err:
             logger.error(f"document pack creation failed: {err}", exc_info=True)
             return "fail"
 
-        
     async def on_query_docs(self, sid, data):
         pack_id = data["pack_id"]
         query = data["query"]
@@ -100,137 +79,36 @@ class Jarvis(Base):
         res = await query_documents(pack_id, query)
         return res["local"]
 
-    async def _parse_docs(self, data):
-        try:
-            source_path = f"document_packs/{data['pack_id']}/raw"
-            logger.info(f"parsing docs: {source_path}...")
-            blobs = await must_list(
-                os.getenv("GOOGLE_PROJECT"), DOCUMENT_BUCKET, source_path
-            )
-            doc_paths = [f"{DOCUMENT_BUCKET}/{blob}" for blob in blobs]
-            logger.info(f"found docs: {doc_paths}")
-
-            futures = []
-            for source_path in doc_paths:
-                target_path = source_path.replace("/raw/", "/parsed/")
-                # gemini processor scales better
-                futures.append(
-                    gemini_pdf_processor(
-                        source_path,
-                        target_path,
-                    )
-                )
-            await asyncio.gather(*futures)
-            return "done"
-        except Exception as err:
-            logger.error(f"failed to parse docs: {err}", exc_info=True)
-            return "fail"
-
-    async def _preprocess_docs(self, data):
-        # graph rag does not support markdown well at the moment, so we need to preprocess the data
-
-        try:
-            source_path = f"document_packs/{data['pack_id']}/parsed"
-            logger.info(f"preprocessing docs: {source_path}...")
-            blobs = await must_list(
-                os.getenv("GOOGLE_PROJECT"), DOCUMENT_BUCKET, source_path
-            )
-            doc_paths = [f"{DOCUMENT_BUCKET}/{blob}" for blob in blobs]
-            logger.info(f"found docs: {doc_paths}")
-
-            futures = []
-            for source_path in doc_paths:
-                target_path = source_path.replace("/parsed/", "/preprocessed/")
-                futures.append(preprocess_docs(source_path, target_path))
-
-            await asyncio.gather(*futures)
-            return "done"
-        except Exception as err:
-            logger.error(f"failed to preprocess docs: {err}", exc_info=True)
-            return "fail"
-
-    async def _index_docs(self, data):
-        try:
-            logger.info(f"indexing docs with pack id: {data['pack_id']}...")
-            await index_documents(data["pack_id"], DOCUMENT_BUCKET)
-            logger.info("indexing done")
-            logger.info("inserting docs into db")
-            root = Path(f"/tmp/jarvis/{data['pack_id']}")
-            documents_pq = root / "output/documents.parquet"
-            documents = pd.read_parquet(documents_pq, columns=["id", "title"]).to_dict(
-                orient="records"
-            )
-            for doc in documents:
-                await insert_doc_into_pack(doc["title"], data["pack_id"], doc["id"])
-            logger.info("done inserting docs")
-            return "done"
-        except Exception as err:
-            logger.error(f"failed to index docs: {err}", exc_info=True)
-            return "fail"
-
     async def on_document_upload_complete(self, sid, data):
+        logger.info(f"received document {data['name']} for user {data['user']}")
+        # .csv,.txt,.pdf,.xlsx supported
         try:
-            logger.info(f"received document {data['name']} for user {data['user']}")
-            # .csv,.txt,.pdf,.xlsx supported
-            if (
-                not data["name"].lower().endswith(".csv")
-                and not data["name"].lower().endswith(".txt")
-                and not data["name"].lower().endswith(".pdf")
-                and not data["name"].lower().endswith(".xlsx")
-            ):
-                return {"result": "unknown document type"}
-            if data["name"].lower().endswith(".txt"):
-                logger.info("processing txt file...")
-                source_path = f"{DOCUMENT_BUCKET}/raw/{data['user']}/{data['uploadId']}/{data['name']}"
-                target_path = source_path.replace("raw", "parsed") + ".md"
-                num_pages, num_tokens = await asyncio.to_thread(
-                    process_txt, src_path=source_path, target_path=target_path
-                )
-            elif data["name"].lower().endswith(".csv"):
-                logger.info("processing csv file...")
-                source_path = f"gs://{DOCUMENT_BUCKET}/raw/{data['user']}/{data['uploadId']}/{data['name']}"
-                target_path = source_path.replace("raw", "parsed") + ".md"
-                num_pages, num_tokens = await asyncio.to_thread(
-                    process_csv, src_path=source_path, target_path=target_path
-                )
-            elif data["name"].lower().endswith(".pdf"):
-                if data.get("mode", "accurate") == "fast":
-                    logger.info("fast pdf processing mode selected")
-                    source_path = f"{DOCUMENT_BUCKET}/raw/{data['user']}/{data['uploadId']}/{data['name']}"
-                    target_path = source_path.replace("raw", "parsed") + ".md"
-                    num_pages, num_tokens = await gemini_pdf_processor(
-                        source_path, target_path
-                    )
-                else:
-                    logger.info("accurate pdf processing mode selected")
-                    source_path = f"{DOCUMENT_BUCKET}/raw/{data['user']}/{data['uploadId']}/{data['name']}"
-                    target_path = source_path.replace("raw", "parsed") + ".md"
-                    num_pages, num_tokens = await asyncio.to_thread(
-                        document_handler,
-                        src_path=source_path,
-                        target_path=target_path,
-                        use_premium_mode=True,
-                    )
-            else:  # .xlsx
-                logger.info("processing file...")
-                source_path = f"{DOCUMENT_BUCKET}/raw/{data['user']}/{data['uploadId']}/{data['name']}"
-                target_path = source_path.replace("raw", "parsed") + ".md"
-                num_pages, num_tokens = await asyncio.to_thread(
-                    document_handler,
-                    src_path=source_path,
-                    target_path=target_path,
-                    use_premium_mode=True,
-                )
+            parsers = resolve_parser(data["name"])
+            source_path = f"{DOCUMENT_BUCKET}/raw/{data['user']}/{data['uploadId']}/{data['name']}"
+            target_path = source_path.replace("raw", "parsed") + ".md"
+            processing_mode = data.get("mode", "accurate")
+            idx = next(i for i, v in enumerate(parsers) if v["kind"] == processing_mode)
+            parser = parsers[idx]
+            res = await parser(src_path=source_path, target_path=target_path)
+            if res["failed"]:
+                raise ValueError(f"processing failed for {res['document_name']}")
             logger.info("inserting doc into db")
             await insert_doc(
-                data["uploadId"], data["name"], data["user"], num_pages, num_tokens
+                data["uploadId"],
+                data["name"],
+                data["user"],
+                res["num_pages"],
+                res["num_tokens"],
             )
             logger.info("document processing done")
             return {
                 "result": f"document_done_{data['name']}_{data['user']}",
-                "num_pages": num_pages,
-                "num_tokens": num_tokens,
+                "num_pages": res["num_pages"],
+                "num_tokens": res["num_tokens"],
             }
+        except TypeError as err:
+            logger.error(f"document processing failed: {err}", exc_info=True)
+            return {"result": "unknown document type"}
         except Exception as err:
             logger.error(f"document processing failed: {err}", exc_info=True)
             return {"result": "document processing failed"}
