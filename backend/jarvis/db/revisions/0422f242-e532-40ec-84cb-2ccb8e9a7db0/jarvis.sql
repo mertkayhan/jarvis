@@ -65,44 +65,6 @@ CREATE TABLE IF NOT EXISTS common.default_personalities (
     PRIMARY KEY (user_id)
 );
 
-CREATE TABLE IF NOT EXISTS common.checkpoint_blobs (
-    thread_id text NOT NULL,
-    checkpoint_ns text DEFAULT ''::text NOT NULL,
-    channel text NOT NULL,
-    version text NOT NULL,
-    type text NOT NULL,
-    blob bytea,
-    PRIMARY KEY (thread_id, checkpoint_ns, channel, version)
-);
-
-CREATE TABLE IF NOT EXISTS common.checkpoint_migrations (
-    v integer NOT NULL,
-    PRIMARY KEY (v)
-);
-
-CREATE TABLE IF NOT EXISTS common.checkpoint_writes (
-    thread_id text NOT NULL,
-    checkpoint_ns text DEFAULT ''::text NOT NULL,
-    checkpoint_id text NOT NULL,
-    task_id text NOT NULL,
-    idx integer NOT NULL,
-    channel text NOT NULL,
-    type text,
-    blob bytea NOT NULL,
-    PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
-);
-
-CREATE TABLE IF NOT EXISTS common.checkpoints (
-    thread_id text NOT NULL,
-    checkpoint_ns text DEFAULT ''::text NOT NULL,
-    checkpoint_id text NOT NULL,
-    parent_checkpoint_id text,
-    type text,
-    checkpoint jsonb NOT NULL,
-    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
-    PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
-);
-
 CREATE TABLE IF NOT EXISTS common.document_repo (
     document_id uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -124,6 +86,7 @@ CREATE TABLE IF NOT EXISTS common.document_packs (
   owner text NOT NULL,
   description text NOT NULL,
   name text NOT NULL,
+  stage text,
   PRIMARY KEY(id)
 );
 
@@ -215,11 +178,19 @@ CREATE TABLE IF NOT EXISTS common.message_history (
     CONSTRAINT message_history_chat_id_fkey FOREIGN KEY (chat_id) REFERENCES common.chat_history(id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS common.document_pack_docs (
+    id text NOT NULL,
+    pack_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    name text NOT NULL,
+    deleted boolean DEFAULT false NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (pack_id) REFERENCES common.document_packs(id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS question_history_question_id_index ON common.question_history USING btree (question_id);
-CREATE INDEX IF NOT EXISTS checkpoint_blobs_thread_id_idx ON common.checkpoint_blobs USING btree (thread_id);
-CREATE INDEX IF NOT EXISTS checkpoint_writes_thread_id_idx ON common.checkpoint_writes USING btree (thread_id);
-CREATE INDEX IF NOT EXISTS checkpoints_thread_id_idx ON common.checkpoints USING btree (thread_id);
 CREATE INDEX IF NOT EXISTS document_repo_user_index ON common.document_repo USING btree (owner);
 CREATE INDEX IF NOT EXISTS question_pairs_question_embedding_idx ON common.question_pairs USING hnsw (question_embedding common.vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS question_tsv_idx ON common.question_pairs USING gin (question_tsv);
@@ -227,6 +198,17 @@ CREATE INDEX IF NOT EXISTS chat_history_user_index ON common.chat_history USING 
 CREATE INDEX IF NOT EXISTS message_history_chat_index ON common.message_history USING btree (chat_id);
 
 -- Triggers
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'set_common_document_repo_updated_at'
+      AND tgrelid = 'common.document_repo'::regclass
+  ) THEN
+    EXECUTE 'CREATE TRIGGER set_common_document_pack_docs_updated_at BEFORE UPDATE ON common.document_pack_docs FOR EACH ROW EXECUTE FUNCTION common.set_current_timestamp_updated_at()';
+  END IF;
+END $$;
+
 DO $$
 BEGIN
   IF NOT EXISTS (

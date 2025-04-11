@@ -11,6 +11,8 @@ from jarvis.cleanup.cleanup import run_cleanup
 from jarvis.db.db import close_connection_pool
 from jarvis.namespaces import Jarvis
 from jarvis.db.migrations import run_migrations
+from jarvis.api.api import app
+import uvicorn
 
 
 logging.basicConfig(
@@ -36,16 +38,14 @@ async def main():
     await run_migrations()
     logger.debug(f"CORS_ALLOWED_ORIGINS -> {getenv('CORS_ALLOWED_ORIGINS')}")
     sio = socketio.AsyncServer(
-        async_mode="aiohttp",
+        async_mode="asgi",
         cors_allowed_origins=getenv("CORS_ALLOWED_ORIGINS").split(";"),
     )
-    app = web.Application()
-    sio.attach(app)
+    app.mount("/", socketio.ASGIApp(sio, app))
     sio.register_namespace(Jarvis("/jarvis"))
-    loop = asyncio.get_running_loop()
-    loop.create_task(run_cleanup(), name="clean_up_task")
+    asyncio.create_task(run_cleanup(), name="clean_up_task")
     logger.info("Ready to accept connections...")
-    web.run_app(app, host=getenv("HOST", "0.0.0.0"), port=8050, loop=loop)
+    uvicorn.run(app, host=getenv("HOST", "0.0.0.0"), port=8000)
     logger.info("tearing down connection pool")
     await close_connection_pool()
 

@@ -2,9 +2,9 @@
 
 import Loading from "@/app/loading";
 import { MemoizedReactMarkdown } from "@/components/chat/markdown";
-import { listDocuments } from "@/components/document-packs/document-packs-actions";
+import { getWorkflowStatus, listDocuments } from "@/components/document-packs/document-packs-actions";
 import { Sidebar } from "@/components/sidebar/chat-sidebar";
-import { AlertDialog, AlertDialogContent } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHeader } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { IconCheck, IconSpinner } from "@/components/ui/icons";
@@ -16,7 +16,7 @@ import { useToast } from "@/lib/hooks/use-toast";
 import { uuidv4 } from "@/lib/utils";
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { DialogTitle } from "@radix-ui/react-dialog";
-import { RefetchQueryFilters, useQuery, useQueryClient } from "@tanstack/react-query";
+import { InvalidateQueryFilters, RefetchQueryFilters, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { HashLoader } from "react-spinners";
@@ -84,11 +84,9 @@ export default function Page() {
     const queryClient = useQueryClient();
     const router = useRouter();
     const handleUpload = async (files: FileList | null) => {
-        setWorkflowStage(Workflow.Upload);
         if (!files) {
             return;
         }
-        setOpen(true);
         for (let i = 0; i < files.length; i++) {
             let readRes = {} as ReadResp;
             try {
@@ -114,39 +112,23 @@ export default function Page() {
         if (inputRef.current) {
             inputRef.current.value = '';
         }
-        setWorkflowStage(Workflow.Parse);
-        socket?.emit("parse_docs", { "bucket": "fsnlabs-docs", "pack_id": params?.packId }, (resp: string) => {
+    };
+    const workflowHandler = async (files: FileList | null) => {
+        setWorkflowStage(Workflow.Upload);
+        setOpen(true);
+        localStorage.setItem(`document_repo_run_${params?.packId}`, "true");
+        await handleUpload(files);
+        socket?.emit("build_document_pack", { "pack_id": params?.packId }, async (resp: string) => {
             if (resp !== "done") {
-                console.error("failed to parse docs");
-                toast({ title: "Failed to parse docs", variant: "destructive" });
+                console.error("failed to create document pack");
+                toast({ title: "Failed to create document pack", variant: "destructive", description: "Please check server logs for more information" });
                 setTimeout(() => setOpen(false), 100);
                 return;
             }
-            setWorkflowStage(Workflow.Preprocess);
-
-            socket.emit("preprocess_docs", { "bucket": "fsnlabs-docs", "pack_id": params?.packId }, (resp: string) => {
-                if (resp !== "done") {
-                    console.error("failed to parse docs");
-                    toast({ title: "Failed to preprocess docs", variant: "destructive" });
-                    setTimeout(() => setOpen(false), 100);
-                    return;
-                }
-                setWorkflowStage(Workflow.Index);
-
-                socket.emit("index_docs", { "bucket": "fsnlabs-docs", "pack_id": params?.packId }, async (resp: string) => {
-                    if (resp !== "done") {
-                        console.error("failed to index docs");
-                        toast({ title: "Failed to index docs", variant: "destructive" });
-                        setTimeout(() => setOpen(false), 100);
-                        return;
-                    }
-                    setWorkflowStage(Workflow.Finalize);
-                    setTimeout(() => setOpen(false), 1000);
-                    await queryClient.refetchQueries(["listPackDocs", params?.packId] as RefetchQueryFilters);
-                    toast({ title: "Successfully indexed documents" });
-                });
-            });
-
+            await queryClient.invalidateQueries(["listPackDocs", params?.packId] as InvalidateQueryFilters);
+            await queryClient.refetchQueries(["listPackDocs", params?.packId] as RefetchQueryFilters);
+            localStorage.removeItem(`document_repo_run_${params?.packId}`);
+            setTimeout(() => setOpen(false), 100);
         });
     }
 
@@ -156,13 +138,69 @@ export default function Page() {
         }
     }, [error]);
 
+    const resolveWorkflowStage = (stage: string) => {
+        switch (stage) {
+            default:
+                return;
+            case "fail":
+                localStorage.removeItem(`document_repo_run_${params?.packId}`);
+                return;
+            case "uploading":
+                setWorkflowStage(Workflow.Upload);
+                return;
+            case "parsing":
+                setWorkflowStage(Workflow.Parse);
+                return;
+            case "preprocessing":
+                setWorkflowStage(Workflow.Preprocess);
+                return;
+            case "indexing":
+                setWorkflowStage(Workflow.Index);
+                return;
+            case "finalizing":
+                setWorkflowStage(Workflow.Finalize);
+                return;
+            case "done":
+                localStorage.removeItem(`document_repo_run_${params?.packId}`);
+                setOpen(false);
+                return;
+        }
+    }
+
+    useEffect(() => {
+        if (params?.packId) {
+            const hasActiveRun = localStorage.getItem(`document_repo_run_${params.packId}`);
+            if (hasActiveRun === "true") {
+                getWorkflowStatus(params.packId).then((resp) => {
+                    resolveWorkflowStage(resp);
+                    setOpen(true);
+                });
+            }
+        }
+
+    }, [params?.packId]);
+
+    useEffect(() => {
+        if (!params?.packId) {
+            return;
+        }
+        socket?.emit("join_pack_room", { "room_id": params.packId });
+        socket?.on("workflow_update", (data: { stage: string }) => {
+            // console.log("update:", data);
+            resolveWorkflowStage(data.stage);
+        });
+        return () => {
+            socket?.off("workflow_update");
+        }
+    }, [socket, params?.packId]);
+
     if (isLoading || userLoading) {
         return (
             <Loading />
         );
     }
 
-    if (userError) {
+    if (userError || !params?.packId) {
         router.push("/forbidden");
     }
 
@@ -174,7 +212,7 @@ export default function Page() {
                 type="file"
                 multiple
                 accept=".pdf"
-                onChange={(e) => handleUpload(e.target.files)}
+                onChange={(e) => workflowHandler(e.target.files)}
             />
             <div className="flex h-full w-full">
                 <Dialog open={snippetDialogOpen} onOpenChange={(open) => setSnippetDialogOpen(open)} modal>
@@ -197,7 +235,10 @@ export default function Page() {
                     }
                 </Dialog>
                 <AlertDialog open={open}>
-                    <AlertDialogContent>
+                    <AlertDialogContent className="w-[60vw] max-w-none">
+                        <AlertDialogHeader>
+                            <AlertDialogDescription>This may take a while depending on the complexity and number of the documents. You can refresh or close this window and come back to check the status any time.</AlertDialogDescription>
+                        </AlertDialogHeader>
                         <div className="flex flex-col">
                             <div className="flex space-x-2">
                                 {workflowStage === Workflow.Upload && <IconSpinner className="animate-spin" />}
@@ -235,7 +276,7 @@ export default function Page() {
                             highlight={false}
                             showChatList={false}
                             moduleName="jarvis"
-                            userId={"user?.email" as string}
+                            userId={user?.email as string}
                             showDocumentRepo={false}
                             showModelSelection={false}
                             showPersonalities={false}
@@ -248,13 +289,13 @@ export default function Page() {
                             <div className="max-w-3xl mx-auto dark:bg-slate-900 shadow-lg rounded-lg py-8 px-6 min-h-[90vh]">
                                 <h1 className="text-2xl font-semibold dark:text-purple-400 mb-4">Documents</h1>
                                 <div className="bg-transparent p-4 rounded-lg w-full space-y-4">
+                                    {/* Upload Button */}
                                     <div className="flex justify-end gap-x-2">
                                         <Button
                                             variant="ghost"
                                             className="group border flex items-center gap-3 px-0 pl-2 py-3 text-base font-medium text-slate-700 transition-all hover:translate-x-1 hover:text-purple-500 dark:text-slate-300 dark:hover:text-purple-400"
                                             type="button"
                                             onClick={() => inputRef.current?.click()}
-                                        // disabled
                                         >
                                             <>
                                                 <svg
@@ -264,29 +305,30 @@ export default function Page() {
                                                     fill="none"
                                                     xmlns="http://www.w3.org/2000/svg"
                                                 >
-                                                    <path d="M7.81825 1.18188C7.64251 1.00615 7.35759 1.00615 7.18185 1.18188L4.18185 4.18188C4.00611 4.35762 4.00611 4.64254 4.18185 4.81828C4.35759 4.99401 4.64251 4.99401 4.81825 4.81828L7.05005 2.58648V9.49996C7.05005 9.74849 7.25152 9.94996 7.50005 9.94996C7.74858 9.94996 7.95005 9.74849 7.95005 9.49996V2.58648L10.1819 4.81828C10.3576 4.99401 10.6425 4.99401 10.8182 4.81828C10.994 4.64254 10.994 4.35762 10.8182 4.18188L7.81825 1.18188ZM2.5 9.99997C2.77614 9.99997 3 10.2238 3 10.5V12C3 12.5538 3.44565 13 3.99635 13H11.0012C11.5529 13 12 12.5528 12 12V10.5C12 10.2238 12.2239 9.99997 12.5 9.99997C12.7761 9.99997 13 10.2238 13 10.5V12C13 13.104 12.1062 14 11.0012 14H3.99635C2.89019 14 2 13.103 2 12V10.5C2 10.2238 2.22386 9.99997 2.5 9.99997Z" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"></path>
+                                                    <path
+                                                        d="M7.81825 1.18188C7.64251 1.00615 7.35759 1.00615 7.18185 1.18188L4.18185 4.18188C4.00611 4.35762 4.00611 4.64254 4.18185 4.81828C4.35759 4.99401 4.64251 4.99401 4.81825 4.81828L7.05005 2.58648V9.49996C7.05005 9.74849 7.25152 9.94996 7.50005 9.94996C7.74858 9.94996 7.95005 9.74849 7.95005 9.49996V2.58648L10.1819 4.81828C10.3576 4.99401 10.6425 4.99401 10.8182 4.81828C10.994 4.64254 10.994 4.35762 10.8182 4.18188L7.81825 1.18188ZM2.5 9.99997C2.77614 9.99997 3 10.2238 3 10.5V12C3 12.5538 3.44565 13 3.99635 13H11.0012C11.5529 13 12 12.5528 12 12V10.5C12 10.2238 12.2239 9.99997 12.5 9.99997C12.7761 9.99997 13 10.2238 13 10.5V12C13 13.104 12.1062 14 11.0012 14H3.99635C2.89019 14 2 13.103 2 12V10.5C2 10.2238 2.22386 9.99997 2.5 9.99997Z"
+                                                        fill="currentColor"
+                                                        fillRule="evenodd"
+                                                        clipRule="evenodd"
+                                                    />
                                                 </svg>
                                                 <span className="pr-2">Upload Document</span>
                                             </>
                                         </Button>
                                     </div>
+                                    {/* Document List */}
                                     <div className="border rounded-md h-[70%] overflow-auto">
                                         {data?.docs && data?.docs.length > 0 ? (
                                             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                                                {data?.docs.map((doc) => (
+                                                {data.docs.map((doc) => (
                                                     <li
                                                         key={doc.id}
                                                         className="flex justify-between items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
                                                     >
-                                                        <p
-                                                            className="text-sm font-medium"
-                                                        >
-                                                            {doc.name}
-                                                        </p>
+                                                        <p className="text-sm font-medium">{doc.name}</p>
                                                     </li>
                                                 ))}
                                             </ul>
-
                                         ) : (
                                             <div className="p-4 text-center text-gray-500 dark:text-gray-400">
                                                 No documents available. Upload a new one!
