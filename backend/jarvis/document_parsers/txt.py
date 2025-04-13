@@ -6,14 +6,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+GOOGLE_PROJECT = getenv("GOOGLE_PROJECT")
+assert GOOGLE_PROJECT, "GOOGLE_PROJECT is not set!"
+
 
 def process_txt(src_path: str, target_path: str) -> ProcessingResult:
-    fs = gcsfs.GCSFileSystem(project=getenv("GOOGLE_PROJECT"), cache_timeout=0)
+    fs = gcsfs.GCSFileSystem(project=GOOGLE_PROJECT, cache_timeout=0)  # type: ignore
 
     with fs.open(src_path, "rb") as f:
-        raw_content = f.read()
+        raw_content: bytes = f.read()  # type: ignore
     with fs.open(target_path, "wb") as f:
-        f.write(raw_content)
+        f.write(raw_content)  # type: ignore
 
     try:
         content = raw_content.decode("utf-8")
@@ -21,5 +24,8 @@ def process_txt(src_path: str, target_path: str) -> ProcessingResult:
         content = raw_content.decode("windows-1252")  # Handle non-UTF-8 files
 
     return ProcessingResult(
-        document_name=src_path, num_tokens=count_tokens(content), failed=False
+        document_name=src_path,
+        num_tokens=count_tokens(content),
+        failed=False,
+        num_pages=None,
     )

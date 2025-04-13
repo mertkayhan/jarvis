@@ -2,16 +2,26 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
-import { getUserModel, setUserModel } from "./model-selection-actions";
+import { getAvailableModels, getUserModel, setUserModel } from "./model-selection-actions";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Button } from "../ui/button";
 import { Command, CommandGroup, CommandItem, CommandList } from "../ui/command";
 import { InvalidateQueryFilters, RefetchQueryFilters, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { frameworks } from "@/lib/models";
+// import { models } from "@/lib/models";
 import { IconSpinner } from "../ui/icons";
 
 interface SelectionDialogProps {
     userId: string
+}
+
+function useAvailableModels(userId: string) {
+    const { data } = useQuery({
+        queryKey: ["availableModels", userId],
+        queryFn: () => getAvailableModels(userId),
+        enabled: !!userId,
+    });
+    return { models: data?.models };
+
 }
 
 export function SelectionDialog({ userId }: SelectionDialogProps) {
@@ -38,7 +48,8 @@ export function SelectionDialog({ userId }: SelectionDialogProps) {
         if (data?.modelName) {
             setValue(data.modelName);
         }
-    }, [data])
+    }, [data]);
+    const { models } = useAvailableModels(userId);
 
     return (
         <DialogContent className="hidden w-[60vw] max-w-none md:flex flex-col justify-center bg-gradient-to-br from-slate-50 via-white to-slate-100 p-10 shadow-lg dark:from-slate-800 dark:via-slate-900 dark:to-black my-auto">
@@ -63,7 +74,7 @@ export function SelectionDialog({ userId }: SelectionDialogProps) {
                             className="w-full justify-between dark:bg-slate-800 bg-slate-200 h-16"
                         >
                             {data
-                                ? frameworks.find((framework) => framework.value === value)?.label
+                                ? models?.find((model) => model.name === value)?.name
                                 : "Select model name"}
                             {/* <ChevronsUpDown className="opacity-50" /> */}
                             <div className="flex flex-col justify-center">
@@ -93,10 +104,10 @@ export function SelectionDialog({ userId }: SelectionDialogProps) {
                             <CommandList>
                                 {/* <CommandEmpty>No framework found.</CommandEmpty> */}
                                 <CommandGroup className="w-full flex-col flex">
-                                    {frameworks.map((framework) => (
+                                    {models?.map((model) => (
                                         <CommandItem
-                                            key={framework.value}
-                                            value={framework.value}
+                                            key={model.name}
+                                            value={model.name}
                                             onSelect={(currentValue) => {
                                                 setValue(currentValue === value ? "" : currentValue)
                                                 setOpen(false)
@@ -104,8 +115,8 @@ export function SelectionDialog({ userId }: SelectionDialogProps) {
                                             className="w-full flex flex-1"
                                         >
                                             <div className="flex flex-1 justify-between w-full">
-                                                <span>{framework.label}</span>
-                                                {value === framework.value &&
+                                                <span>{model.name}</span>
+                                                {value === model.name &&
                                                     <svg
                                                         className="w-4 h-4"
                                                         viewBox="0 0 15 15"

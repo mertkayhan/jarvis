@@ -23,7 +23,7 @@ class Memory:
     async def setup(cls):
         logger.info("setting up memory")
         pool = await get_connection_pool()
-        cls.saver = AsyncPostgresSaver(pool)
+        cls.saver = AsyncPostgresSaver(pool)  # type: ignore
         await cls.saver.setup()
 
     @classmethod
@@ -66,7 +66,7 @@ async def runner(
     ):
         kind = event["event"]
         if kind == "on_chat_model_stream":
-            content = event["data"]["chunk"].content
+            content = event["data"]["chunk"].content  # type: ignore
             # logger.info(f"on_chat_model_stream - {content}")
             if content:
                 yield StreamData(

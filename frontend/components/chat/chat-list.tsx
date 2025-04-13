@@ -40,10 +40,11 @@ export function ChatList({ messages, streaming, setCurrentContext, messageEndRef
         key="placeholder"
         id="placeholder"
         className={`flex h-[60vh] overflow-hidden bg-transparent pointer-events-none px-4 py-2 text-sm text-muted-foreground rounded-md w-fit max-w-[80%] mb-4 transition-all duration-300 ease-in-out
-    ${awaitingAssistantReply && streaming ? "opacity-100 animate-slowpulse" : "opacity-0"}
-  `}
+  ${awaitingAssistantReply && streaming ? "opacity-100" : "opacity-0"}`}
       >
-        Assistant is thinking...
+        <p className="relative inline-block font-medium shimmer-text">
+          Assistant is thinking…
+        </p>
       </div>
 
     </div >

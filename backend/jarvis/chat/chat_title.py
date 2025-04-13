@@ -12,7 +12,7 @@ class ChatTitle(BaseModel):
     )
 
 
-async def create_chat_title(llm: Model, messages: Sequence[Message]) -> str:
+async def create_chat_title(llm: Model, messages: Sequence[str]) -> str:
     system = """
     You are an AI assistant that generates concise and descriptive chat titles based on the first two messages of a conversation.  
     - The title should capture the main topic or intent of the conversation.  
@@ -31,4 +31,4 @@ async def create_chat_title(llm: Model, messages: Sequence[Message]) -> str:
     structured_llm = prompt | structured_llm
 
     res = await structured_llm.ainvoke({})
-    return res.title
+    return res.title  # type: ignore

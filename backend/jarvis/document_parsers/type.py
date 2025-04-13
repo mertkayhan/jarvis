@@ -1,4 +1,4 @@
-from typing import Callable, Literal, Optional, TypedDict
+from typing import Callable, Coroutine, Literal, Optional, TypedDict
 
 
 class ProcessingResult(TypedDict):
@@ -12,10 +12,17 @@ class Parser:
     def __init__(
         self,
         kind: Literal["accurate", "fast"],
-        impl: Callable[[str, str], ProcessingResult],
+        impl: Callable[[str, str], Coroutine[None, None, ProcessingResult]],
     ):
         self.kind = kind
         self.impl = impl
 
     async def __call__(self, src_path: str, target_path: str) -> ProcessingResult:
-        return await self.impl(src_path=src_path, target_path=target_path)
+        return await self.impl(src_path, target_path)
+
+
+class ParseResult(TypedDict):
+    document_name: str
+    page_number: int
+    content: Optional[str]
+    failed: bool

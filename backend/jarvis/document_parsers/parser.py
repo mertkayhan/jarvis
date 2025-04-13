@@ -17,18 +17,18 @@ def resolve_parser(fname: str) -> List[Parser]:
         raise TypeError("unknown document type")
 
     if fname.lower().endswith(".txt"):
-        return [Parser(kind="accurate", impl=process_txt_wrapper)]
+        return [Parser(kind="accurate", impl=process_txt_wrapper)]  # type: ignore
 
     elif fname.lower().endswith(".csv"):
-        return [Parser(kind="accurate", impl=process_csv_wrapper)]
+        return [Parser(kind="accurate", impl=process_csv_wrapper)]  # type: ignore
 
     elif fname.lower().endswith(".pdf"):
         return [
             Parser(kind="fast", impl=gemini_pdf_processor),
-            Parser(kind="accurate", impl=document_handler_wrapper),
+            Parser(kind="accurate", impl=document_handler_wrapper),  # type: ignore
         ]
     else:  # .xlsx
-        return [Parser(kind="accurate", impl=document_handler_wrapper)]
+        return [Parser(kind="accurate", impl=document_handler_wrapper)]  # type: ignore
 
 
 async def process_txt_wrapper(**kwargs) -> ProcessingResult:

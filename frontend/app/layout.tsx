@@ -20,7 +20,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const key = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_KEY || "unknown";
+  const key = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_KEY;
   return (
     <html lang="en">
       <UserProvider>
@@ -41,7 +41,7 @@ export default function RootLayout({
           </body>
         </CookiesProvider>
       </UserProvider>
-      <GoogleAnalytics gaId={key} />
+      {key && <GoogleAnalytics gaId={key} />}
     </html>
   )
 }

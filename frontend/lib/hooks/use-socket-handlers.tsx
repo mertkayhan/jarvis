@@ -109,6 +109,7 @@ export function useSocketHandlers(
         const handleConnect = () => {
             console.log("Connected to server");
             toast({ title: "Connected to chat server" });
+            socket?.emit("join_chat_room", { "room_id": id });
             // setWait(false);
         };
 

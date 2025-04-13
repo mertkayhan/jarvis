@@ -1,4 +1,5 @@
 import os
+from typing import Optional, Sequence
 from uuid import uuid4
 from jarvis.chat.chat_title import create_chat_title
 from jarvis.context.context import FaithfullnessParams
@@ -87,7 +88,7 @@ class Jarvis(Base):
             source_path = f"{DOCUMENT_BUCKET}/raw/{data['user']}/{data['uploadId']}/{data['name']}"
             target_path = source_path.replace("raw", "parsed") + ".md"
             processing_mode = data.get("mode", "accurate")
-            idx = next(i for i, v in enumerate(parsers) if v["kind"] == processing_mode)
+            idx = next(i for i, v in enumerate(parsers) if v.kind == processing_mode)
             parser = parsers[idx]
             res = await parser(src_path=source_path, target_path=target_path)
             if res["failed"]:
@@ -164,10 +165,11 @@ class Jarvis(Base):
             )
 
         # start AI message generation
-        chat_model = await get_chat_model(chat_id)
+        chat_model: Optional[str] = await get_chat_model(chat_id)
         logger.info(f"{chat_model=}")
+        model_selection = ""
         if not chat_model:
-            model_selection = await get_model_selection(user_id)
+            model_selection: str = await get_model_selection(user_id)
         sess = await self.get_session(sid, self.namespace)
         model = model_factory(
             chat_model or model_selection, sess.get("docs_token_count", 0)
@@ -181,7 +183,7 @@ class Jarvis(Base):
         ctx.question_pack = d.get("question_pack")
         ctx.document_pack = d.get("document_pack")
         tools = bootstrap_tools(ctx=ctx, tool_names=tool_selection)
-        app = await build_graph(model["model_impl"], tools, chat_id)
+        app = await build_graph(model["model_impl"], tools, chat_id)  # type: ignore
         messages.extend(build_user_message(data))
         resp = new_server_message(chat_id, user_id)
         if (
@@ -208,7 +210,7 @@ class Jarvis(Base):
         if d.get("first_message"):
             # create automatic chat title
             title = await create_chat_title(
-                model, [messages[1]["content"], resp.content]
+                model, [messages[1]["content"], resp.content]  # type: ignore
             )  # exclude system message
             await update_chat_title(chat_id, title)
             await self.emit(
@@ -228,7 +230,7 @@ class Jarvis(Base):
             [chat_model, history] = await asyncio.gather(
                 get_chat_model(chat_id), get_message_history(chat_id)
             )
-            model = model_factory(chat_model, 0)
+            model = model_factory(chat_model, 0)  # type: ignore
             title = await create_chat_title(model, history)
             await update_chat_title(chat_id, title)
             return True
@@ -269,7 +271,9 @@ class Jarvis(Base):
             read_docs_helper(chat_doc_ids),
         )
         docs = "\n\n".join(doc_contents) if personality_doc_ids or chat_doc_ids else ""
-        system_message_content = f"{instruction}\n\nDOCUMENTS:\n\n{docs}"
+        system_message_content = (
+            f"{instruction}\n\nDOCUMENTS:\n\n{docs}" if len(docs) > 0 else instruction
+        )
         system_message = build_system_message(system_message_content)
         messages.append(system_message)
         create_message_future = create_message(
@@ -286,21 +290,26 @@ class Jarvis(Base):
         await asyncio.gather(create_message_future, update_chat_future)
 
     async def _additional_docs_handler(
-        self, sid, chat_id, chat_doc_ids, messages, personality
+        self,
+        sid: str,
+        chat_id: str,
+        chat_doc_ids: list[str],
+        messages: list[dict[str, str]],
+        personality: dict[str, str],
     ):
         sess = await self.get_session(sid, self.namespace)
         existing_docs = sess.get("docs")
         # we need to double check with db
         if not existing_docs:
-            existing_docs = await get_chat_docs(chat_id)
-        current_docs = set(chat_doc_ids)
-        diff = current_docs - existing_docs
+            existing_docs: set[str] = await get_chat_docs(chat_id)
+        current_docs: set[str] = set(chat_doc_ids)
+        diff: set[str] = current_docs - existing_docs
         if len(diff):
             sess["docs"] = set(chat_doc_ids)
             sess["docs_token_count"] = await get_doc_tokens(chat_doc_ids)
             await self.save_session(sid, sess, self.namespace)
             logger.info(f"received new docs: {diff}")
-            new_content = await read_docs_helper(diff)
+            new_content = await read_docs_helper(diff)  # type: ignore
             new_system_message_content = f"You are given the below additional documents as context.\n\nADDITIONAL DOCUMENTS:\n\n{new_content}"
             new_system_message = build_system_message(new_system_message_content)
             messages.append(new_system_message)
