@@ -152,3 +152,20 @@ async function listDocumentsHandler(packId: string) {
         throw err;
     }
 }
+
+export async function getWorkflowStatus(packId: string) {
+    const getStatus = sql`
+        SELECT 
+            stage
+        FROM common.document_packs
+        WHERE id = ${packId}
+    `;
+
+    try {
+        const res = await getStatus;
+        return res[0].stage as string;
+    } catch (error) {
+        console.error("failed to get workflow status");
+        throw error;
+    }
+}

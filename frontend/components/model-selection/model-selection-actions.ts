@@ -5,6 +5,22 @@ import postgres from "postgres";
 const uri = process.env.DB_URI || "unknown";
 const sql = postgres(uri, { connection: { application_name: "Jarvis" } });
 
+interface GetAvailableModelsResp {
+    models: { name: string, description: string }[]
+}
+
+export async function getAvailableModels(userId: string) {
+    const backendUrl = process.env.BACKEND_URL;
+    const resp = await fetch(
+        `${backendUrl}/api/v1/users/${userId}/models`,
+        {
+            method: "GET",
+        }
+    );
+    const data = await resp.json();
+    return { models: data.models } as GetAvailableModelsResp;
+}
+
 interface GetUserModelResp {
     modelName: string | null
 }

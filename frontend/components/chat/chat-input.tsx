@@ -224,11 +224,11 @@ export function ChatInput({
                             />
                             <SelfNotes input={input} setInput={setInput} />
                             <RegenerateResponse reload={reload} messageCount={messageCount} />
-                            <GenerateFollowUp generateFollowUp={generateFollowUp} messageCount={messageCount} />
+                            {/* <GenerateFollowUp generateFollowUp={generateFollowUp} messageCount={messageCount} /> */}
                         </div>
                         <div className='flex justify-end items-center gap-2 w-full'>
                             <DetectHallucination detectHallucination={detectHallucination} setDetectHallucination={setDetectHallucination} />
-                            <AutoScroll autoScroll={autoScroll} setAutoScroll={setAutoScroll} />
+                            {/* <AutoScroll autoScroll={autoScroll} setAutoScroll={setAutoScroll} /> */}
                             <SubmitButton isLoading={isLoading} input={input} stop={stop} />
                         </div>
                     </div>

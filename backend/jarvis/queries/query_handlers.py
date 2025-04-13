@@ -7,11 +7,16 @@ from psycopg.rows import dict_row
 from jarvis.db.db import get_connection_pool
 from dotenv import load_dotenv
 
+from jarvis.document_parsers.gemini import GOOGLE_PROJECT
+
 logger = logging.getLogger(__name__)
 load_dotenv()
 
 DOCUMENT_BUCKET = os.getenv("DOCUMENT_BUCKET")
 assert DOCUMENT_BUCKET, "DOCUMENT_BUCKET is not set!"
+
+GOOGLE_PROJECT = os.getenv("GOOGLE_PROJECT")
+assert GOOGLE_PROJECT, "GOOGLE_PROJECT is not set!"
 
 
 async def create_chat(chat_id: str, owner_id: str):
@@ -84,7 +89,7 @@ async def read_docs(ids: Sequence[str]) -> str:
             resp = await cur.execute(query, (list(ids),))
             res = await resp.fetchall()
 
-    fs = gcsfs.GCSFileSystem(project=os.getenv("GOOGLE_PROJECT"), cache_timeout=0)
+    fs = gcsfs.GCSFileSystem(project=GOOGLE_PROJECT, cache_timeout=0)  # type: ignore
     out = []
 
     for doc in res:
@@ -92,7 +97,7 @@ async def read_docs(ids: Sequence[str]) -> str:
             f"{DOCUMENT_BUCKET}/parsed/{doc['owner']}/{doc['document_id']}/{doc['document_name']}.md",
             "rb",
         ) as f:
-            raw_content = f.read()
+            raw_content: bytes = f.read()  # type: ignore
             try:
                 content = raw_content.decode("utf-8")
             except UnicodeDecodeError:
@@ -101,6 +106,21 @@ async def read_docs(ids: Sequence[str]) -> str:
             out.append(f"# Document Name: {doc['document_name']}\n\n{content}")
 
     return "\n\n".join(out)
+
+
+async def update_document_pack_status(id: str, status: str):
+    query = """
+    UPDATE common.document_packs
+    SET stage = %(status)s
+    WHERE id = %(id)s
+    """
+
+    pool = await get_connection_pool()
+
+    async with pool.connection() as conn:
+        async with conn.transaction():
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(query, {"id": id, "status": status})
 
 
 async def update_chat(id, personality, documents):
@@ -124,7 +144,7 @@ async def update_chat(id, personality, documents):
                 )
 
 
-async def get_model_selection(user):
+async def get_model_selection(user) -> str:
     query = """
     SELECT 
         model_name 
@@ -153,7 +173,7 @@ async def get_model_selection(user):
         return model_selection
 
 
-async def get_chat_model(id):
+async def get_chat_model(id) -> Optional[str]:
     query = """
     SELECT
         model_name 

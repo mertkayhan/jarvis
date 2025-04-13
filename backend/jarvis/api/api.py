@@ -1,8 +1,36 @@
+from typing import Optional
 from fastapi import FastAPI
 from pydantic import BaseModel
+from models import ALL_SUPPORTED_MODELS
+from fastapi.responses import ORJSONResponse
 
 
-app = FastAPI()
+app = FastAPI(
+    title="Jarvis",
+    version="0.0.1",
+    default_response_class=ORJSONResponse,
+)
+
+
+class AIModel(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class UserModels(BaseModel):
+    models: list[AIModel]
+
+
+@app.get(
+    "/api/v1/users/{user_id}/models",
+    response_model=UserModels,
+)
+async def get_available_models(
+    user_id: str,
+) -> UserModels:
+    return UserModels(
+        models=[AIModel(name=model_name) for model_name in ALL_SUPPORTED_MODELS]
+    )
 
 
 @app.get("/api/v1/users/{user_id}/chats/{chat_id}/messages")

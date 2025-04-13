@@ -16,6 +16,9 @@ load_dotenv()
 DOCUMENT_BUCKET = getenv("DOCUMENT_BUCKET")
 assert DOCUMENT_BUCKET, "DOCUMENT_BUCKET is not set!"
 
+GOOGLE_PROJECT = getenv("GOOGLE_PROJECT")
+assert GOOGLE_PROJECT, "GOOGLE_PROJECT is not set!"
+
 
 async def run_cleanup():
     while True:
@@ -53,7 +56,7 @@ async def clean_old_docs():
 
     logger.info("cleaning up old docs")
     res = await executor(query)
-    fs = gcsfs.GCSFileSystem(project=getenv("GOOGLE_PROJECT"), cache_timeout=0)
+    fs = gcsfs.GCSFileSystem(project=GOOGLE_PROJECT, cache_timeout=0)  # type: ignore
     for r in res:
         logger.info(f"deleting {r['document_name']}")
         fs.rm_file(
@@ -103,7 +106,7 @@ async def executor(query: str) -> List[DictRow]:
     async with pool.connection() as conn:
         async with conn.cursor(row_factory=dict_row) as cur:
             async with conn.transaction():
-                res_future = await cur.execute(query)
+                res_future = await cur.execute(query.encode("utf-8"))
                 res = await res_future.fetchall()
     return res
 
@@ -119,6 +122,6 @@ async def clean_old_document_packs():
     res = await executor(query)
     base = Path("/tmp/jarvis")
     for r in res:
-        to_delete = base / Path(r)
+        to_delete = base / Path(r["id"])
         logger.info(f"deleting {to_delete}...")
         shutil.rmtree(to_delete.as_posix(), ignore_errors=True)

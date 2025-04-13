@@ -1,17 +1,14 @@
 import os
+from typing import Optional, Sequence
 from uuid import uuid4
-from jarvis.blob_storage.storage import must_list
 from jarvis.chat.chat_title import create_chat_title
 from jarvis.context.context import FaithfullnessParams
-from jarvis.document_parsers.csv import process_csv
-from jarvis.document_parsers.gemini import gemini_pdf_processor
-from jarvis.document_parsers.llamaparse import document_handler
-from jarvis.document_parsers.txt import process_txt
-from jarvis.graphrag.graphrag import index_documents, query_documents
+from jarvis.document_parsers.parser import resolve_parser
+from jarvis.graphrag.graphrag import query_documents
 import logging
 from dotenv import load_dotenv
 import json
-from jarvis.graphrag.preprocess import preprocess_docs
+from jarvis.graphrag.workflow import execute_workflow
 from jarvis.messages.utils import (
     build_system_message,
     build_user_message,
@@ -29,18 +26,16 @@ from jarvis.queries.query_handlers import (
     get_doc_tokens,
     get_message_history,
     insert_doc,
-    insert_doc_into_pack,
     read_docs_helper,
     set_chat_model,
     update_chat,
     get_model_selection,
     update_chat_title,
+    update_document_pack_status,
 )
 from jarvis.context import Context
 import asyncio
 from jarvis.models.models import model_factory
-from pathlib import Path
-import pandas as pd
 
 
 load_dotenv()
@@ -51,6 +46,33 @@ assert DOCUMENT_BUCKET, "DOCUMENT_BUCKET is not set!"
 
 
 class Jarvis(Base):
+    async def on_join_pack_room(self, sid, data):
+        logger.info(f"{sid} requesting to join room for pack {data['room_id']}")
+        await self._room_resolver(sid, data["room_id"])
+
+    async def on_build_document_pack(self, sid, data):
+        try:
+            rooms = self.rooms(sid, self.namespace)
+            if data["pack_id"] not in rooms:
+                await self.enter_room(sid, data["pack_id"], self.namespace)
+            await update_document_pack_status(data["pack_id"], "parsing")
+            await self.emit(
+                "workflow_update", {"stage": "parsing"}, room=data["pack_id"]
+            )
+            async for result in execute_workflow(data):
+                await update_document_pack_status(
+                    data["pack_id"], result["message"]["stage"]
+                )
+                await self.emit(
+                    "workflow_update", result["message"], room=data["pack_id"]
+                )
+                if result["failed"]:
+                    return "fail"
+            return "done"
+        except Exception as err:
+            logger.error(f"document pack creation failed: {err}", exc_info=True)
+            return "fail"
+
     async def on_query_docs(self, sid, data):
         pack_id = data["pack_id"]
         query = data["query"]
@@ -58,137 +80,36 @@ class Jarvis(Base):
         res = await query_documents(pack_id, query)
         return res["local"]
 
-    async def on_parse_docs(self, sid, data):
-        try:
-            source_path = f"document_packs/{data['pack_id']}/raw"
-            logger.info(f"parsing docs: {source_path}...")
-            blobs = await must_list(
-                os.getenv("GOOGLE_PROJECT"), DOCUMENT_BUCKET, source_path
-            )
-            doc_paths = [f"{DOCUMENT_BUCKET}/{blob}" for blob in blobs]
-            logger.info(f"found docs: {doc_paths}")
-
-            futures = []
-            for source_path in doc_paths:
-                target_path = source_path.replace("/raw/", "/parsed/")
-                # gemini processor scales better
-                futures.append(
-                    gemini_pdf_processor(
-                        source_path,
-                        target_path,
-                    )
-                )
-            await asyncio.gather(*futures)
-            return "done"
-        except Exception as err:
-            logger.error(f"failed to parse docs: {err}", exc_info=True)
-            return "fail"
-
-    async def on_preprocess_docs(self, sid, data):
-        # graph rag does not support markdown well at the moment, so we need to preprocess the data
-
-        try:
-            source_path = f"document_packs/{data['pack_id']}/parsed"
-            logger.info(f"preprocessing docs: {source_path}...")
-            blobs = await must_list(
-                os.getenv("GOOGLE_PROJECT"), DOCUMENT_BUCKET, source_path
-            )
-            doc_paths = [f"{DOCUMENT_BUCKET}/{blob}" for blob in blobs]
-            logger.info(f"found docs: {doc_paths}")
-
-            futures = []
-            for source_path in doc_paths:
-                target_path = source_path.replace("/parsed/", "/preprocessed/")
-                futures.append(preprocess_docs(source_path, target_path))
-
-            await asyncio.gather(*futures)
-            return "done"
-        except Exception as err:
-            logger.error(f"failed to preprocess docs: {err}", exc_info=True)
-            return "fail"
-
-    async def on_index_docs(self, sid, data):
-        try:
-            logger.info(f"indexing docs with pack id: {data['pack_id']}...")
-            await index_documents(data["pack_id"], DOCUMENT_BUCKET)
-            logger.info("indexing done")
-            logger.info("inserting docs into db")
-            root = Path(f"/tmp/jarvis/{data['pack_id']}")
-            documents_pq = root / "output/documents.parquet"
-            documents = pd.read_parquet(documents_pq, columns=["id", "title"]).to_dict(
-                orient="records"
-            )
-            for doc in documents:
-                await insert_doc_into_pack(doc["title"], data["pack_id"], doc["id"])
-            logger.info("done inserting docs")
-            return "done"
-        except Exception as err:
-            logger.error(f"failed to index docs: {err}", exc_info=True)
-            return "fail"
-
     async def on_document_upload_complete(self, sid, data):
+        logger.info(f"received document {data['name']} for user {data['user']}")
+        # .csv,.txt,.pdf,.xlsx supported
         try:
-            logger.info(f"received document {data['name']} for user {data['user']}")
-            # .csv,.txt,.pdf,.xlsx supported
-            if (
-                not data["name"].lower().endswith(".csv")
-                and not data["name"].lower().endswith(".txt")
-                and not data["name"].lower().endswith(".pdf")
-                and not data["name"].lower().endswith(".xlsx")
-            ):
-                return {"result": "unknown document type"}
-            if data["name"].lower().endswith(".txt"):
-                logger.info("processing txt file...")
-                source_path = f"{DOCUMENT_BUCKET}/raw/{data['user']}/{data['uploadId']}/{data['name']}"
-                target_path = source_path.replace("raw", "parsed") + ".md"
-                num_pages, num_tokens = await asyncio.to_thread(
-                    process_txt, src_path=source_path, target_path=target_path
-                )
-            elif data["name"].lower().endswith(".csv"):
-                logger.info("processing csv file...")
-                source_path = f"gs://{DOCUMENT_BUCKET}/raw/{data['user']}/{data['uploadId']}/{data['name']}"
-                target_path = source_path.replace("raw", "parsed") + ".md"
-                num_pages, num_tokens = await asyncio.to_thread(
-                    process_csv, src_path=source_path, target_path=target_path
-                )
-            elif data["name"].lower().endswith(".pdf"):
-                if data.get("mode", "accurate") == "fast":
-                    logger.info("fast pdf processing mode selected")
-                    source_path = f"{DOCUMENT_BUCKET}/raw/{data['user']}/{data['uploadId']}/{data['name']}"
-                    target_path = source_path.replace("raw", "parsed") + ".md"
-                    num_pages, num_tokens = await gemini_pdf_processor(
-                        source_path, target_path
-                    )
-                else:
-                    logger.info("accurate pdf processing mode selected")
-                    source_path = f"{DOCUMENT_BUCKET}/raw/{data['user']}/{data['uploadId']}/{data['name']}"
-                    target_path = source_path.replace("raw", "parsed") + ".md"
-                    num_pages, num_tokens = await asyncio.to_thread(
-                        document_handler,
-                        src_path=source_path,
-                        target_path=target_path,
-                        use_premium_mode=True,
-                    )
-            else:  # .xlsx
-                logger.info("processing file...")
-                source_path = f"{DOCUMENT_BUCKET}/raw/{data['user']}/{data['uploadId']}/{data['name']}"
-                target_path = source_path.replace("raw", "parsed") + ".md"
-                num_pages, num_tokens = await asyncio.to_thread(
-                    document_handler,
-                    src_path=source_path,
-                    target_path=target_path,
-                    use_premium_mode=True,
-                )
+            parsers = resolve_parser(data["name"])
+            source_path = f"{DOCUMENT_BUCKET}/raw/{data['user']}/{data['uploadId']}/{data['name']}"
+            target_path = source_path.replace("raw", "parsed") + ".md"
+            processing_mode = data.get("mode", "accurate")
+            idx = next(i for i, v in enumerate(parsers) if v.kind == processing_mode)
+            parser = parsers[idx]
+            res = await parser(src_path=source_path, target_path=target_path)
+            if res["failed"]:
+                raise ValueError(f"processing failed for {res['document_name']}")
             logger.info("inserting doc into db")
             await insert_doc(
-                data["uploadId"], data["name"], data["user"], num_pages, num_tokens
+                data["uploadId"],
+                data["name"],
+                data["user"],
+                res["num_pages"],
+                res["num_tokens"],
             )
             logger.info("document processing done")
             return {
                 "result": f"document_done_{data['name']}_{data['user']}",
-                "num_pages": num_pages,
-                "num_tokens": num_tokens,
+                "num_pages": res["num_pages"],
+                "num_tokens": res["num_tokens"],
             }
+        except TypeError as err:
+            logger.error(f"document processing failed: {err}", exc_info=True)
+            return {"result": "unknown document type"}
         except Exception as err:
             logger.error(f"document processing failed: {err}", exc_info=True)
             return {"result": "document processing failed"}
@@ -200,8 +121,6 @@ class Jarvis(Base):
         # create chat
         if d.get("first_message"):
             await self._create_chat(chat_id, user_id, sid)
-        # create chat room
-        await self._room_resolver(sid, chat_id)
         # broadcast message to other participants
         await self.emit(
             "chat_broadcast", data, room=chat_id, skip_sid=sid, namespace=self.namespace
@@ -246,10 +165,11 @@ class Jarvis(Base):
             )
 
         # start AI message generation
-        chat_model = await get_chat_model(chat_id)
+        chat_model: Optional[str] = await get_chat_model(chat_id)
         logger.info(f"{chat_model=}")
+        model_selection = ""
         if not chat_model:
-            model_selection = await get_model_selection(user_id)
+            model_selection: str = await get_model_selection(user_id)
         sess = await self.get_session(sid, self.namespace)
         model = model_factory(
             chat_model or model_selection, sess.get("docs_token_count", 0)
@@ -263,7 +183,7 @@ class Jarvis(Base):
         ctx.question_pack = d.get("question_pack")
         ctx.document_pack = d.get("document_pack")
         tools = bootstrap_tools(ctx=ctx, tool_names=tool_selection)
-        app = await build_graph(model["model_impl"], tools, chat_id)
+        app = await build_graph(model["model_impl"], tools, chat_id)  # type: ignore
         messages.extend(build_user_message(data))
         resp = new_server_message(chat_id, user_id)
         if (
@@ -290,15 +210,19 @@ class Jarvis(Base):
         if d.get("first_message"):
             # create automatic chat title
             title = await create_chat_title(
-                model, [messages[1]["content"], resp.content]
+                model, [messages[1]["content"], resp.content]  # type: ignore
             )  # exclude system message
             await update_chat_title(chat_id, title)
             await self.emit(
                 "autogen_chat_title",
                 {"new_title": title, "chat_id": chat_id, "user_id": user_id},
-                to=sid,
+                to=sid,  # the person who created the chat should get this
                 namespace=self.namespace,
             )
+
+    async def on_join_chat_room(self, sid, data):
+        logger.info(f"{sid} requesting to join chat room {data['room_id']}")
+        await self._room_resolver(sid, data["room_id"])
 
     async def on_generate_chat_title(self, sid, data):
         try:
@@ -306,7 +230,7 @@ class Jarvis(Base):
             [chat_model, history] = await asyncio.gather(
                 get_chat_model(chat_id), get_message_history(chat_id)
             )
-            model = model_factory(chat_model, 0)
+            model = model_factory(chat_model, 0)  # type: ignore
             title = await create_chat_title(model, history)
             await update_chat_title(chat_id, title)
             return True
@@ -347,7 +271,9 @@ class Jarvis(Base):
             read_docs_helper(chat_doc_ids),
         )
         docs = "\n\n".join(doc_contents) if personality_doc_ids or chat_doc_ids else ""
-        system_message_content = f"{instruction}\n\nDOCUMENTS:\n\n{docs}"
+        system_message_content = (
+            f"{instruction}\n\nDOCUMENTS:\n\n{docs}" if len(docs) > 0 else instruction
+        )
         system_message = build_system_message(system_message_content)
         messages.append(system_message)
         create_message_future = create_message(
@@ -364,21 +290,26 @@ class Jarvis(Base):
         await asyncio.gather(create_message_future, update_chat_future)
 
     async def _additional_docs_handler(
-        self, sid, chat_id, chat_doc_ids, messages, personality
+        self,
+        sid: str,
+        chat_id: str,
+        chat_doc_ids: list[str],
+        messages: list[dict[str, str]],
+        personality: dict[str, str],
     ):
         sess = await self.get_session(sid, self.namespace)
         existing_docs = sess.get("docs")
         # we need to double check with db
         if not existing_docs:
-            existing_docs = await get_chat_docs(chat_id)
-        current_docs = set(chat_doc_ids)
-        diff = current_docs - existing_docs
+            existing_docs: set[str] = await get_chat_docs(chat_id)
+        current_docs: set[str] = set(chat_doc_ids)
+        diff: set[str] = current_docs - existing_docs
         if len(diff):
             sess["docs"] = set(chat_doc_ids)
             sess["docs_token_count"] = await get_doc_tokens(chat_doc_ids)
             await self.save_session(sid, sess, self.namespace)
             logger.info(f"received new docs: {diff}")
-            new_content = await read_docs_helper(diff)
+            new_content = await read_docs_helper(diff)  # type: ignore
             new_system_message_content = f"You are given the below additional documents as context.\n\nADDITIONAL DOCUMENTS:\n\n{new_content}"
             new_system_message = build_system_message(new_system_message_content)
             messages.append(new_system_message)

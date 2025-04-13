@@ -43,11 +43,11 @@ async def tool_call_handler(
             tool_call_id=context["id"],
             name=context["name"],
         )
-    res["name"] = context["name"]
-    res["tool_call_id"] = context["id"]
 
     if model == "antrophic":
         res["role"] = "tool"
+        res["name"] = context["name"]
+        res["tool_call_id"] = context["id"]
     elif model == "google":
         res["role"] = "user"
     elif model == "openai":
@@ -81,7 +81,8 @@ def flatten(x: List):
 async def tool_node(
     state: AgentState, tools_by_name: Dict[str, Tool], model: str
 ) -> Dict[str, List[ToolMessage]]:
-    outputs = []
+
+    # print("tool calls:", state["messages"][-1].tool_calls)
     outputs: List[Union[ToolMessage, List[BaseMessage]]] = await asyncio.gather(
         *[
             tool_call_handler(
@@ -90,7 +91,24 @@ async def tool_node(
             for tool_call in state["messages"][-1].tool_calls
         ],
     )
-    return {"messages": flatten(outputs)}
+
+    flat_outputs = flatten(outputs)
+
+    # this is a band-aid to make the above work around work - otherwise we cannot add images into tool responses
+    if len(outputs) > 1:
+        # we need to group user messages into one
+        user_message_content = []
+        for msg in flat_outputs:
+            if msg["role"] == "user":
+                user_message_content.extend(msg["content"])
+        if len(user_message_content) > 0:
+            tool_messages = [msg for msg in flat_outputs if msg["role"] == "tool"]
+            flat_outputs = tool_messages + [
+                {"role": "user", "content": user_message_content}
+            ]
+
+    # print("outputs:", flat_outputs)
+    return {"messages": flat_outputs}
 
 
 # Define the node that calls the model
