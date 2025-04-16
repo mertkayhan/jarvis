@@ -107,8 +107,8 @@ export function useSocketHandlers(
         }
         // console.log("connected", socket.connected);
         const handleConnect = () => {
-            console.log("Connected to server");
-            toast({ title: "Connected to chat server" });
+            // console.log("Connected to server");
+            // toast({ title: "Connected to chat server" });
             socket?.emit("join_chat_room", { "room_id": id });
             // setWait(false);
         };
@@ -119,32 +119,32 @@ export function useSocketHandlers(
             dispatch({ type: "DISCONNECT" });
 
             if (reason === "io server disconnect") {
-                toast({
-                    title: "Server disconnected",
-                    description: "Disconnected by the server. Attempting manual reconnect...",
-                    variant: "destructive"
-                });
+                // toast({
+                //     title: "Server disconnected",
+                //     description: "Disconnected by the server. Attempting manual reconnect...",
+                //     variant: "destructive"
+                // });
                 socket.connect(); // Optional: Explicit reconnect if server disconnected
             } else if (reason === "transport close") {
-                toast({
-                    title: "Lost connection",
-                    description: "Network issue detected. Awaiting automatic reconnect...",
-                    variant: "destructive"
-                });
+                // toast({
+                //     title: "Lost connection",
+                //     description: "Network issue detected. Awaiting automatic reconnect...",
+                //     variant: "destructive"
+                // });
             }
         };
         socket.on("connect", handleConnect);
         socket.on("disconnect", handleDisconnect);
 
         socket.on("reconnect_attempt", () => {
-            toast({ title: "Reconnecting", description: "Attempting to reconnect..." });
+            // toast({ title: "Reconnecting", description: "Attempting to reconnect..." });
         });
 
         socket.on("reconnect", (attemptNumber) => {
-            toast({
-                title: "Connection success",
-                description: `Reconnected to server after ${attemptNumber} attempts`
-            });
+            // toast({
+            //     title: "Connection success",
+            //     description: `Reconnected to server after ${attemptNumber} attempts`
+            // });
         });
 
         return () => {

@@ -1,5 +1,16 @@
 import os
 from langchain_google_vertexai import ChatVertexAI
+import socket
+
+
+def check_metadata_server_dns():
+    metadata_server = "metadata.google.internal"
+    try:
+        socket.gethostbyname(metadata_server)
+        return True
+    except socket.gaierror:
+        return False
+
 
 SUPPORTED_MODELS = (
     {
@@ -9,7 +20,7 @@ SUPPORTED_MODELS = (
         "gemini-2.0-flash-lite-001": {"temperature": 0, "location": "europe-west1"},
         "gemini-2.5-pro-preview-03-25": {"temperature": 0, "location": "us-central1"},
     }
-    if os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or check_metadata_server_dns()
     else {}
 )
 

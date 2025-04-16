@@ -16,7 +16,7 @@ export function ChatList({ messages, streaming, setCurrentContext, messageEndRef
   const awaitingAssistantReply = lastMessage?.role === "user"
 
   return (
-    <div className="flex flex-1 flex-col mx-auto max-w-2xl">
+    <div className="flex flex-1 flex-col mx-auto md:max-w-3xl lg:max-w-4xl">
       {messages.map((message, index) => (
         <div
           key={index}

@@ -39,6 +39,14 @@ export async function getToken() {
     }
 }
 
+export async function getWSUrl() {
+    const url = process.env.BACKEND_URL;
+    if (!url) {
+        throw new Error('BACKEND_URL is not set!');
+    }
+    return url;
+}
+
 interface GetChatTitleResp {
     title: string | null
 }

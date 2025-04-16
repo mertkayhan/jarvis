@@ -30,6 +30,7 @@ async def get_available_models(
 ) -> UserModels:
     return UserModels(
         models=[AIModel(name=model_name) for model_name in ALL_SUPPORTED_MODELS]
+        + [AIModel(name="automatic")]
     )
 
 

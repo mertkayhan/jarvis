@@ -156,8 +156,9 @@ export function UserMessage({ message }: UserMessageProps) {
             <div
                 className="mb-4 flex rounded-xl bg-slate-200 px-2 py-6 dark:bg-slate-900 sm:px-4"
             >
-                <div className="flex max-w-3xl items-center">
-                    <MessageContainer message={message} />
+                <div className="flex md:max-w-3xl lg:max-w-4xl items-center">
+                    {/* <MessageContainer message={message} /> */}
+                    <p className='px-2'>{message.content}</p>
                 </div>
             </div>
         </div>
@@ -180,7 +181,7 @@ export function AIMessage({ message, streaming, onCopy, isCopied, liked, setLike
             <div
                 className="flex-1 overflow-wrap rounded-xl p-4 text-xs md:text-sm leading-6 text-slate-900 bg-background dark:text-slate-300"
             >
-                <div className={`flex max-w-3xl items-start rounded-xl pb-4`}>
+                <div className={`flex md:max-w-3xl lg:max-w-4xl items-start rounded-xl pb-4`}>
                     <MessageContainer message={message} />
                 </div>
                 {!streaming && (
@@ -341,7 +342,7 @@ export function MessageContainer({ message }: MessageContainerProps) {
     return (
         <div className="flex-1 px-1 ml-4 space-y-2 overflow-hidden">
             <MemoizedReactMarkdown
-                className="prose break-words dark:prose-invert prose-p:leading-relaxed prose-pre:p-0 md:text-sm text-xs"
+                className="prose break-words dark:prose-invert prose-p:leading-relaxed prose-pre:p-0 md:text-sm text-xs max-w-none w-full"
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeKatex]}
                 components={{
