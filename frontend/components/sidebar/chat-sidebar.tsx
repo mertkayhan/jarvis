@@ -13,7 +13,7 @@ import { ModeToggle } from "./theme-toggle";
 import { QuestionPacks } from "../question-packs/question-packs";
 import { ChatButton, ChatListButton, LogOutButton } from "./buttons";
 import { DocumentPacks } from "../document-packs/document-packs";
-import { SettingsDialog } from "../ui/settings-dialog";
+// import { SettingsDialog } from "../ui/settings-dialog";
 
 
 interface SidebarProps {
