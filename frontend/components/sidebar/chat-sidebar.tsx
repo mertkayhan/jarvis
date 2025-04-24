@@ -13,7 +13,7 @@ import { ModeToggle } from "./theme-toggle";
 import { QuestionPacks } from "../question-packs/question-packs";
 import { ChatButton, ChatListButton, LogOutButton } from "./buttons";
 import { DocumentPacks } from "../document-packs/document-packs";
-// import { SettingsDialog } from "../ui/settings-dialog";
+import { SettingsDialog } from "../ui/settings-dialog";
 
 
 interface SidebarProps {
@@ -64,13 +64,13 @@ export function Sidebar({
                 <TooltipProvider>
                     {!showChatList && setShowChatList && <ChatListButton setShowChatList={setShowChatList} />}
                     <ChatButton moduleName={moduleName} highlightStyle={highlightStyle()} selectedStyle={selectedStyle("chat")} />
-                    {/* <SettingsDialog userId={userId} /> */}
-                    <QuestionPacks highlightStyle={highlightStyle()} selectedStyle={selectedStyle("question-repo")} userId={userId} moduleName={moduleName} />
-                    <DocumentPacks highlightStyle={highlightStyle()} selectedStyle={selectedStyle("document-repo")} userId={userId} />
-                    {showDocumentRepo && <DocumentRepo
+                    <SettingsDialog userId={userId} />
+                    {/* <QuestionPacks highlightStyle={highlightStyle()} selectedStyle={selectedStyle("question-repo")} userId={userId} moduleName={moduleName} /> */}
+                    {/* <DocumentPacks highlightStyle={highlightStyle()} selectedStyle={selectedStyle("document-repo")} userId={userId} /> */}
+                    {/* {showDocumentRepo && <DocumentRepo
                         highlightStyle={highlightStyle()}
                         userId={userId}
-                    />}
+                    />} */}
                     {/* {showModelSelection && <ModelSelection userId={userId} highlightStyle={highlightStyle()} />} */}
                     {showPersonalities && <Personalities
                         userId={userId}

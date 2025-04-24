@@ -203,7 +203,7 @@ export function Chat({
                                                     }
                                                 </div>
                                             </div>
-                                            <div className='space-y-2'>
+                                            {/* <div className='space-y-2'>
                                                 <div className='flex'>
                                                     <QuestionPackSelectionMenu
                                                         title={(!selectedQuestionPack) ? 'Add question pack' : selectedQuestionPack.name}
@@ -236,8 +236,8 @@ export function Chat({
                                                         </TooltipProvider>
                                                     }
                                                 </div>
-                                            </div>
-                                            <div className='space-y-2'>
+                                            </div> */}
+                                            {/* <div className='space-y-2'>
                                                 <div className='flex'>
                                                     <DocumentPackSelectionMenu
                                                         title={(!selectedDocumentPack) ? 'Add doc pack' : selectedDocumentPack.name}
@@ -270,7 +270,7 @@ export function Chat({
                                                         </TooltipProvider>
                                                     }
                                                 </div>
-                                            </div>
+                                            </div> */}
                                         </div>
                                     </TooltipProvider>
                                 }
