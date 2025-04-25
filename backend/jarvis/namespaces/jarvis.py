@@ -1,9 +1,8 @@
 import os
-from typing import Optional, Sequence
+from typing import Optional
 from uuid import uuid4
 from jarvis.chat.chat_title import create_chat_title
 from jarvis.context.context import FaithfullnessParams
-from jarvis.document_parsers.parser import resolve_parser
 from jarvis.graphrag.graphrag import query_documents
 import logging
 from dotenv import load_dotenv
@@ -24,7 +23,6 @@ from jarvis.queries.query_handlers import (
     get_chat_model,
     get_doc_tokens,
     get_message_history,
-    insert_doc,
     read_docs_helper,
     set_chat_model,
     update_chat,
@@ -78,40 +76,6 @@ class Jarvis(Base):
         logger.info(f"received graphrag query: {query}")
         res = await query_documents(pack_id, query)
         return res["local"]
-
-    async def on_document_upload_complete(self, sid, data):
-        logger.info(f"received document {data['name']} for user {data['user']}")
-        # .csv,.txt,.pdf,.xlsx supported
-        try:
-            parsers = resolve_parser(data["name"])
-            source_path = f"{DOCUMENT_BUCKET}/raw/{data['user']}/{data['uploadId']}/{data['name']}"
-            target_path = source_path.replace("raw", "parsed") + ".md"
-            processing_mode = data.get("mode", "accurate")
-            idx = next(i for i, v in enumerate(parsers) if v.kind == processing_mode)
-            parser = parsers[idx]
-            res = await parser(src_path=source_path, target_path=target_path)
-            if res["failed"]:
-                raise ValueError(f"processing failed for {res['document_name']}")
-            logger.info("inserting doc into db")
-            await insert_doc(
-                data["uploadId"],
-                data["name"],
-                data["user"],
-                res["num_pages"],
-                res["num_tokens"],
-            )
-            logger.info("document processing done")
-            return {
-                "result": f"document_done_{data['name']}_{data['user']}",
-                "num_pages": res["num_pages"],
-                "num_tokens": res["num_tokens"],
-            }
-        except TypeError as err:
-            logger.error(f"document processing failed: {err}", exc_info=True)
-            return {"result": "unknown document type"}
-        except Exception as err:
-            logger.error(f"document processing failed: {err}", exc_info=True)
-            return {"result": "document processing failed"}
 
     async def on_chat_message(self, sid, data):
         logger.info(f"received message: {data['content']}")

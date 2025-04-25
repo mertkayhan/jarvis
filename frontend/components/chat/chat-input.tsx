@@ -188,11 +188,11 @@ export function ChatInput({
                             onChange={e => setInput(e.target.value)}
                             placeholder="Enter your prompt"
                             spellCheck={true}
-                            className="bg-transparent resize-none focus-within:outline-none text-xs w-full border-0 px-0 md:text-sm text-slate-900 focus:outline-none dark:text-slate-200 dark:placeholder-slate-400"
+                            className="flex bg-transparent resize-none focus-within:outline-none text-xs w-full border-0 px-0 md:text-sm text-slate-900 focus:outline-none dark:text-slate-200 dark:placeholder-slate-400 overflow-hidden"
                             onPaste={(e) => {
-                                console.log(e);
-                                console.log(e.clipboardData.getData("text"));
-                                console.log(e.clipboardData.files);
+                                // console.log(e);
+                                // console.log(e.clipboardData.getData("text"));
+                                // console.log(e.clipboardData.files);
                                 const validFiles: File[] = [];
                                 const validPreviews: string[] = [];
                                 for (const clipboardItem of e.clipboardData.files) {

@@ -7,21 +7,10 @@ import {
     HelpCircle,
     FolderSearch2
 } from "lucide-react"
-
-import {
-    Breadcrumb,
-    BreadcrumbItem,
-    BreadcrumbLink,
-    BreadcrumbList,
-    BreadcrumbPage,
-    BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
-    DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
 import {
@@ -41,9 +30,6 @@ import { useToast } from "@/lib/hooks/use-toast"
 import { UserDocument } from "@/lib/types"
 import { UploadButton } from "../document-repo/buttons"
 import { Skeleton } from "./skeleton"
-import { useAuthToken } from "@/lib/hooks/use-auth-token"
-import { useSocket } from "@/lib/hooks/use-socket"
-import { Socket } from "socket.io-client"
 import { Tooltip, TooltipTrigger } from "./tooltip"
 import { TooltipContent } from "@radix-ui/react-tooltip"
 
@@ -59,13 +45,12 @@ interface BuildDialogContentProps {
     selection: string,
     userId: string,
     data: UserDocument[] | null | undefined,
-    socket: Socket | null,
     uploadRunning: boolean
     setUploadRunning: React.Dispatch<React.SetStateAction<boolean>>
     docsLoading: boolean
 }
 
-function BuildDialogContent({ selection, userId, data, socket, uploadRunning, setUploadRunning, docsLoading }: BuildDialogContentProps) {
+function BuildDialogContent({ selection, userId, data, uploadRunning, setUploadRunning, docsLoading }: BuildDialogContentProps) {
     switch (selection) {
         case "Documents":
             return (
@@ -76,7 +61,6 @@ function BuildDialogContent({ selection, userId, data, socket, uploadRunning, se
                                 uploadRunning={uploadRunning}
                                 userId={userId}
                                 setUploadRunning={setUploadRunning}
-                                socket={socket}
                             />
                         </div>
                     </header>
@@ -136,8 +120,6 @@ export function SettingsDialog({ userId }: { userId: string }) {
     const [selection, setSelection] = React.useState("Documents");
     const { docs, docsLoading } = useDocuments(userId);
     const [uploadRunning, setUploadRunning] = React.useState(false);
-    const token = useAuthToken();
-    const socket = useSocket({ socketNamespace: "jarvis", userId, token });
 
     return (
         <Dialog open={open} onOpenChange={(open) => {
@@ -196,7 +178,6 @@ export function SettingsDialog({ userId }: { userId: string }) {
                             selection={selection}
                             userId={userId}
                             data={docs?.docs}
-                            socket={socket}
                             setUploadRunning={setUploadRunning}
                             uploadRunning={uploadRunning}
                             docsLoading={docsLoading}
