@@ -13,7 +13,6 @@ from jarvis.messages.utils import (
     build_system_message,
     build_user_message,
     new_server_message,
-    skip_message,
 )
 from jarvis.tools.tools import bootstrap_tools
 from jarvis.agent.base import build_graph
@@ -155,14 +154,14 @@ class Jarvis(Base):
 
         # persist user message
         await create_message(data, chat_id)
-        if skip_message(data["content"]):
-            logger.info("message for @self skipping...")
-            return await self.emit(
-                "server_message",
-                {"content": "<done>", "data": json.dumps({"chat_id": chat_id})},
-                room=chat_id,
-                namespace=self.namespace,
-            )
+        # if skip_message(data["content"]):
+        #     logger.info("message for @self skipping...")
+        #     return await self.emit(
+        #         "server_message",
+        #         {"content": "<done>", "data": json.dumps({"chat_id": chat_id})},
+        #         room=chat_id,
+        #         namespace=self.namespace,
+        #     )
 
         # start AI message generation
         chat_model: Optional[str] = await get_chat_model(chat_id)

@@ -222,7 +222,7 @@ export function ChatInput({
                                 inputRef={inputRef}
                                 messagesLength={messageCount}
                             />
-                            <SelfNotes input={input} setInput={setInput} />
+                            {/* <SelfNotes input={input} setInput={setInput} /> */}
                             <RegenerateResponse reload={reload} messageCount={messageCount} />
                             {/* <GenerateFollowUp generateFollowUp={generateFollowUp} messageCount={messageCount} /> */}
                         </div>
