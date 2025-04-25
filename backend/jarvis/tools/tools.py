@@ -14,18 +14,20 @@ logger = logging.getLogger(__name__)
 
 
 def bootstrap_tools(ctx: Context, tool_names: List[str]) -> List[StructuredTool]:
-    async def top5_results_partial(query: str) -> str:
-        return await top5_results(query=query, ctx=ctx)
+    tool_bundles = {}
 
-    tool_bundles = {
-        "Google Search": [
+    if top5_results is not None:
+
+        async def top5_results_partial(query: str) -> str:
+            return await top5_results(query=query, ctx=ctx)
+
+        tool_bundles["Google Search"] = [
             {
                 "coroutine": top5_results_partial,
                 "description": "Search Google for recent results.",
                 "name": "Google-Search",
             }
-        ],
-    }
+        ]
 
     if ctx.question_pack:
 

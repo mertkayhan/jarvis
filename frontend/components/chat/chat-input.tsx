@@ -3,7 +3,6 @@
 import Textarea from 'react-textarea-autosize'
 import { useEnterSubmit } from '@/lib/hooks/use-enter-submit'
 import { useState, useRef, Dispatch, SetStateAction, useEffect } from 'react'
-import { PromptTemplate } from '@/lib/prompt-template'
 import Image from 'next/image'
 import { useToast } from '@/lib/hooks/use-toast'
 import { SelfNotes } from './self-notes'
@@ -30,7 +29,6 @@ export interface ChatInputProps {
     stop: () => void
     messageCount: number
     hasSystemPrompt: boolean
-    promptTemplate?: PromptTemplate
     autoScroll: boolean
     setAutoScroll: Dispatch<SetStateAction<boolean>>
     detectHallucination: boolean

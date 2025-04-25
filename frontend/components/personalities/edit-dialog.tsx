@@ -5,13 +5,12 @@ import { AlertDialogAction, AlertDialogCancel, AlertDialogDescription, AlertDial
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Personality } from "@/lib/types";
-import { tools } from "@/lib/tools";
 import { Checkbox } from "../ui/checkbox";
 import { DocumentSelectionMenu } from "../document-repo/document-selection-menu";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "../ui/button";
-import { InvalidateQueryFilters, useMutation, useQueryClient } from "@tanstack/react-query";
-import { updatePersonality } from "./personality-actions";
+import { InvalidateQueryFilters, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getAvailableTools, updatePersonality } from "./personality-actions";
 import { useToast } from "@/lib/hooks/use-toast";
 import { IconSpinner } from "../ui/icons";
 
@@ -43,6 +42,13 @@ export function EditDialog({ personality, userId, setOpen }: EditDialogProps) {
             toast({ title: "Failed to update personality", variant: "destructive" });
         },
     }, queryClient);
+    const { data } = useQuery(
+        {
+            queryKey: ["availableTools", userId],
+            queryFn: () => getAvailableTools(userId),
+            enabled: !!userId
+        }
+    )
 
     return (
         <>
@@ -74,18 +80,18 @@ export function EditDialog({ personality, userId, setOpen }: EditDialogProps) {
                     <div className="flex flex-col gap-2">
                         <Label>Tools</Label>
                         <div className="flex space-x-2">
-                            {tools.map((tool) => {
+                            {data?.tools.map((tool: string) => {
                                 return (
                                     <>
                                         <Checkbox
-                                            id={tool.label}
+                                            id={tool}
                                             className="data-[state=checked]:bg-indigo-500 data-[state=checked]:text-indigo-500"
-                                            checked={currentToolSelection.includes(tool.name)}
+                                            checked={currentToolSelection.includes(tool)}
                                             onCheckedChange={(checked) => {
                                                 if (checked) {
-                                                    setCurrentToolSelection((old) => [tool.name, ...old]);
+                                                    setCurrentToolSelection((old) => [tool, ...old]);
                                                 } else {
-                                                    setCurrentToolSelection((old) => old.filter((o) => o !== tool.name));
+                                                    setCurrentToolSelection((old) => old.filter((o) => o !== tool));
                                                 }
                                             }}
                                         />
@@ -93,7 +99,7 @@ export function EditDialog({ personality, userId, setOpen }: EditDialogProps) {
                                             htmlFor="default-prompt"
                                             className="text-sm font-medium leading-none hover:cursor-pointer"
                                         >
-                                            {tool.name}
+                                            {tool}
                                         </label>
                                     </>
                                 )

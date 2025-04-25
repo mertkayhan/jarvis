@@ -3,7 +3,6 @@
 import { DocumentPack, Message, Personality, QuestionPack } from '@/lib/types'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import React, { useState, Dispatch, SetStateAction } from 'react';
-import { defaultSystemPrompt, PromptTemplate } from '@/lib/prompt-template'
 import {
     ResizableHandle,
     ResizablePanel,
@@ -34,9 +33,9 @@ export interface ChatProps {
     path: string
     greeting: string
     hasSystemPrompt: boolean
-    promptTemplate?: PromptTemplate
-    selectedPersonality: Personality
-    setSelectedPersonality: Dispatch<SetStateAction<Personality>>
+    defaultSystemPrompt: Personality | undefined
+    selectedPersonality: Personality | undefined
+    setSelectedPersonality: Dispatch<SetStateAction<Personality | undefined>>
     socket: Socket | null
     id: string
     dispatch: Dispatch<any>
@@ -49,7 +48,7 @@ export function Chat({
     path,
     greeting,
     hasSystemPrompt,
-    promptTemplate,
+    defaultSystemPrompt,
     selectedPersonality,
     setSelectedPersonality,
     socket,
@@ -67,7 +66,7 @@ export function Chat({
     const [initialized, setInitialized] = useState(false);
     const [autoScroll, setAutoScroll] = useState(true);
     useNetworkStatus({ socket, path });
-    useSocketHandlers(socket, setInitialized, id, userId, setMessages, setCurrentContext, setSelectedPersonality, setLoading, setSelectedDocuments, setSelectedQuestionPack, setSelectedDocumentPack);
+    useSocketHandlers(socket, setInitialized, id, userId, setMessages, setCurrentContext, defaultSystemPrompt, setSelectedPersonality, setLoading, setSelectedDocuments, setSelectedQuestionPack, setSelectedDocumentPack);
 
     const append = appendFn(id, isLoading, setMessages, setLoading, socket, setCurrentContext);
     const cancel = cancelFn(socket, setLoading, id);
@@ -134,11 +133,11 @@ export function Chat({
                                             <div className="space-y-2">
                                                 <div className='flex'>
                                                     <PersonalitySelectionMenu
-                                                        title={(selectedPersonality.name === "default") ? 'Pick personality' : selectedPersonality.name}
+                                                        title={(selectedPersonality?.name === "default") ? 'Pick personality' : selectedPersonality?.name}
                                                         userId={userId}
                                                         setSelectedPersonality={setSelectedPersonality}
                                                     />
-                                                    {selectedPersonality.name !== "default" &&
+                                                    {selectedPersonality?.name !== "default" &&
                                                         <TooltipProvider>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
@@ -292,7 +291,6 @@ export function Chat({
                                             path={path}
                                             generateFollowUp={generateFollowUp}
                                             hasSystemPrompt={hasSystemPrompt}
-                                            promptTemplate={promptTemplate}
                                             selectedDocuments={selectedDocuments}
                                             selectedPersonality={selectedPersonality}
                                             autoScroll={autoScroll}

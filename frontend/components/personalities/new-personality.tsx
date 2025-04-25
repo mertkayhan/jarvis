@@ -92,7 +92,7 @@ export function NewPersonality({ userId }: NewPersonalityProps) {
                     <PersonalitySettings setGloballyAvailable={setGloballyAvailable} setIsDefault={setIsDefault} />
                     <div className="flex flex-col gap-2">
                         <Label>Tools</Label>
-                        <Tools toolSelection={toolSelection} setToolSelection={setToolSelection} />
+                        <Tools toolSelection={toolSelection} setToolSelection={setToolSelection} userId={userId} />
                     </div>
                     <div className="flex py-2 gap-x-2 items-center">
                         <Label >Internal Knowledge</Label>

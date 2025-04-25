@@ -4,7 +4,6 @@ import { Dispatch, MutableRefObject, SetStateAction, useState } from 'react'
 import { uuidv4 } from '@/lib/utils'
 import { DocumentPack, Message, Personality, QuestionPack, UserChat } from '@/lib/types'
 import { ChatInput } from '@/components/chat/chat-input'
-import { PromptTemplate } from '@/lib/prompt-template'
 import imageCompression from 'browser-image-compression'
 import { useQueryClient } from '@tanstack/react-query'
 import { ListChatsResp } from '../chat-sidebar/chat-sidebar-actions'
@@ -23,8 +22,7 @@ export interface ChatPanelProps {
   path: string
   generateFollowUp: () => void
   hasSystemPrompt: boolean
-  promptTemplate?: PromptTemplate
-  selectedPersonality: Personality
+  selectedPersonality: Personality | undefined
   selectedDocuments: string[]
   autoScroll: boolean
   setAutoScroll: Dispatch<SetStateAction<boolean>>
@@ -46,7 +44,6 @@ export function ChatPanel({
   userId,
   generateFollowUp,
   hasSystemPrompt,
-  promptTemplate,
   selectedPersonality,
   selectedDocuments,
   autoScroll,
@@ -152,7 +149,6 @@ export function ChatPanel({
             stop={stop}
             messageCount={messageCount}
             hasSystemPrompt={hasSystemPrompt}
-            promptTemplate={promptTemplate}
             autoScroll={autoScroll}
             setAutoScroll={setAutoScroll}
             detectHallucination={detectHallucination}

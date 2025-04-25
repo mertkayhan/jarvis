@@ -1,6 +1,7 @@
 "use server"
 
 import postgres from "postgres";
+import { getToken } from "../chat/chat-actions";
 
 const uri = process.env.DB_URI || "unknown";
 const sql = postgres(uri, { connection: { application_name: "Jarvis" } });
@@ -11,10 +12,12 @@ interface GetAvailableModelsResp {
 
 export async function getAvailableModels(userId: string) {
     const backendUrl = process.env.BACKEND_URL;
+    const token = await getToken();
     const resp = await fetch(
         `${backendUrl}/api/v1/users/${userId}/models`,
         {
             method: "GET",
+            headers: { "Authorization": `Bearer ${token}` }
         }
     );
     const data = await resp.json();

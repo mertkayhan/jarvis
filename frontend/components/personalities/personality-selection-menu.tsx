@@ -11,9 +11,9 @@ import { ClipLoader } from "react-spinners";
 import { Personality } from "@/lib/types";
 
 interface PersonalitySelectionMenuProps {
-    title: string
+    title: string | undefined
     userId: string
-    setSelectedPersonality: Dispatch<SetStateAction<Personality>>
+    setSelectedPersonality: Dispatch<SetStateAction<Personality | undefined>>
 }
 
 

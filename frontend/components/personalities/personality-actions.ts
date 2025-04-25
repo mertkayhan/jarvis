@@ -2,9 +2,24 @@
 
 import { Personality } from "@/lib/types";
 import postgres from "postgres";
+import { getToken } from "../chat/chat-actions";
 
 const uri = process.env.DB_URI || "unknown";
 const sql = postgres(uri, { connection: { application_name: "Jarvis" } });
+
+export async function getAvailableTools(userId: string) {
+    const backendUrl = process.env.BACKEND_URL;
+    const token = await getToken();
+    const resp = await fetch(
+        `${backendUrl}/api/v1/users/${userId}/tools`,
+        {
+            method: "GET",
+            headers: { "Authorization": `Bearer ${token}` }
+        }
+    );
+    const data = await resp.json();
+    return { tools: data.tools };
+}
 
 export interface ListPersonalitiesResp {
     personalities: Personality[] | null

@@ -1,11 +1,15 @@
+import datetime
 import os
 from typing import Annotated, Optional
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import Depends, FastAPI, File, UploadFile, Form, Request, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import gcsfs
 from pydantic import BaseModel
+from jarvis.auth.auth import validate_token
 from jarvis.blob_storage.storage import generate_download_signed_url_v4
 from jarvis.document_parsers.parser import resolve_parser
 from jarvis.queries.query_handlers import insert_doc
+from jarvis.tools import ALL_AVAILABLE_TOOLS
 from models import ALL_SUPPORTED_MODELS
 from fastapi.responses import ORJSONResponse
 from dotenv import load_dotenv
@@ -16,11 +20,41 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
+class JWTBearer(HTTPBearer):
+    def __init__(self, auto_error: bool = True):
+        super(JWTBearer, self).__init__(auto_error=auto_error)
+
+    async def __call__(self, request: Request):
+        credentials = await super(JWTBearer, self).__call__(request)
+        if credentials:
+            if not credentials.scheme == "Bearer":
+                raise HTTPException(
+                    status_code=403, detail="Invalid authentication scheme."
+                )
+            if not self.verify_jwt(credentials.credentials):
+                raise HTTPException(
+                    status_code=403, detail="Invalid token or expired token."
+                )
+            return credentials
+        else:
+            raise HTTPException(status_code=403, detail="Invalid authorization code.")
+
+    def verify_jwt(self, token: str) -> bool:
+        try:
+            validate_token(token)
+            return True
+        except Exception as err:
+            logger.error(f"failed to validate bearer token: {err}", exc_info=True)
+            return False
+
+
 app = FastAPI(
     title="Jarvis",
     version="0.0.1",
     default_response_class=ORJSONResponse,
+    dependencies=[Depends(JWTBearer())],
 )
+
 
 GOOGLE_PROJECT = os.getenv("GOOGLE_PROJECT")
 assert GOOGLE_PROJECT, "'GOOGLE_PROJECT' is not set!"
@@ -37,6 +71,57 @@ class UserModels(BaseModel):
     models: list[AIModel]
 
 
+class SystemPrompt(BaseModel):
+    name: str
+    description: str
+    instructions: str
+    tools: list[str]
+
+
+@app.get(
+    "/api/v1/users/{user_id}/default-prompt",
+    response_model=SystemPrompt,
+)
+async def get_default_system_prompt(user_id: str) -> SystemPrompt:
+    # TODO: return user system prompt
+    return SystemPrompt(
+        name="default",
+        description="This is the default system prompt for Jarvis.",
+        instructions=f"""
+        The assistant is Jarvis.
+
+        The current date is {datetime.datetime.now(datetime.timezone.utc).isoformat()}.
+
+        ## Thought Process & Reasoning
+        - When faced with a math, logic, or complex reasoning problem, Jarvis systematically thinks through the problem step by step before delivering a final answer.
+        - Jarvis provides thorough responses to complex or open-ended questions and concise responses to simpler tasks.
+
+        ## Information Extraction & Prioritization
+        - **Primary Source**: When a question pack is available, prioritize extracting relevant information from it before considering other sources or asking the user for additional details.
+        - **Fallback Strategy**: If the question pack does not contain the necessary information, then proceed to ask the user for more specific details or use other available tools, such as web search.
+        - **Clarification**: Only ask the user for additional information if the question pack and other tools do not provide a satisfactory answer.
+    
+        ## Conversational Approach
+        - Jarvis engages in **authentic, natural conversations**, responding to the user's input, asking relevant follow-up questions only when necessary.
+        - Jarvis avoids excessive questioning and ensures a balanced dialogue.
+        - Jarvis adapts its tone and style to the user's preference and context.
+
+        ## Capabilities & Tools
+        - Jarvis assists with **analysis, question answering, coding, document understanding, creative writing, teaching, and general discussions**.
+        - Jarvis retrieves up-to-date information from the web using Google Search when necessary.
+        - If analyzing a document it does not have access to, Jarvis prompts the user to upload it to the Document Repository. The user must attach the processed document for analysis.
+
+        ## Formatting & Usability
+        - Jarvis follows best practices for **Markdown formatting** to enhance clarity and readability.
+        - Jarvis continuously improves based on user feedback.
+
+        ## Language Adaptability
+        - Jarvis follows these instructions in all languages and responds in the language the user uses or requests.
+        """,
+        tools=ALL_AVAILABLE_TOOLS,
+    )
+
+
 @app.get(
     "/api/v1/users/{user_id}/models",
     response_model=UserModels,
@@ -50,9 +135,13 @@ async def get_available_models(
     )
 
 
-@app.get("/api/v1/users/{user_id}/tools")
-async def get_available_tools(user_id: str):
-    pass
+class ToolSet(BaseModel):
+    tools: list[str]
+
+
+@app.get("/api/v1/users/{user_id}/tools", response_model=ToolSet)
+async def get_available_tools(user_id: str) -> ToolSet:
+    return ToolSet(tools=ALL_AVAILABLE_TOOLS)
 
 
 class UploadResult(BaseModel):
@@ -85,7 +174,6 @@ async def upload_document(
 
     try:
         target_path = f"{DOCUMENT_BUCKET}/raw/{user_id}/{upload_id}/{fileb.filename}"
-        print(fileb.file)
         fs = gcsfs.GCSFileSystem(project=GOOGLE_PROJECT)  # type: ignore
         with fs.open(target_path, "wb") as f:
             f.write(fileb.file.read())  # type: ignore
