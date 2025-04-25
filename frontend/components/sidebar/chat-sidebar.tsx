@@ -6,7 +6,6 @@ import { TooltipProvider } from "../ui/tooltip";
 import { config } from "@/app/cfg";
 import { usePathname } from 'next/navigation';
 import { useTheme } from "next-themes";
-import { DocumentRepo } from "@/components/document-repo/document-repo";
 import { ModelSelection } from "../model-selection/model-selection";
 import { Personalities } from "../personalities/personalities";
 import { ModeToggle } from "./theme-toggle";
@@ -67,10 +66,6 @@ export function Sidebar({
                     <SettingsDialog userId={userId} />
                     {/* <QuestionPacks highlightStyle={highlightStyle()} selectedStyle={selectedStyle("question-repo")} userId={userId} moduleName={moduleName} /> */}
                     {/* <DocumentPacks highlightStyle={highlightStyle()} selectedStyle={selectedStyle("document-repo")} userId={userId} /> */}
-                    {/* {showDocumentRepo && <DocumentRepo
-                        highlightStyle={highlightStyle()}
-                        userId={userId}
-                    />} */}
                     {/* {showModelSelection && <ModelSelection userId={userId} highlightStyle={highlightStyle()} />} */}
                     {showPersonalities && <Personalities
                         userId={userId}
