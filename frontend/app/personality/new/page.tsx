@@ -103,12 +103,12 @@ export default function Page() {
                         </span>
                         <div className="w-full h-full flex flex-col space-y-2">
                             <Label>Name</Label>
-                            <Input className="w-full text-sm dark:border-indigo-300 border-slate-200" value={name} onChange={(e) => { setName(e.target.value) }} />
+                            <Input className="w-full text-sm" value={name} onChange={(e) => { setName(e.target.value) }} />
                             <Label>Description</Label>
-                            <Input className="w-full text-sm dark:border-indigo-300 border-slate-200" value={description} onChange={(e) => { setDescription(e.target.value) }} />
+                            <Input className="w-full text-sm" value={description} onChange={(e) => { setDescription(e.target.value) }} />
                             <Label>Instructions</Label>
                             <textarea
-                                className="flex bg-transparent border resize-none w-full focus:outline-none p-2 text-sm rounded-lg dark:border-indigo-300 border-slate-200"
+                                className="flex bg-transparent border resize-none w-full focus:outline-none p-2 text-sm rounded-lg"
                                 rows={4}
                                 value={instructions}
                                 onChange={(e) => { setInstructions(e.target.value) }}

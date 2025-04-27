@@ -5,7 +5,7 @@ import { InvalidateQueryFilters, useMutation, useQuery, useQueryClient } from "@
 import { useToast } from "@/lib/hooks/use-toast";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import Loading from "@/app/loading";
-import { getAvailableTools, getPersonality, updatePersonality } from "@/components/personalities/personality-actions";
+import { deleteDefaultPersonality, getAvailableTools, getPersonality, setDefaultPersonality, updatePersonality } from "@/components/personalities/personality-actions";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,7 +15,7 @@ import { KnowledgeDropdown } from "@/components/knowledge/knowledge-dropdown";
 import { Button } from "@/components/ui/button";
 import { IconSpinner } from "@/components/ui/icons";
 import { Sidebar } from "@/components/sidebar/chat-sidebar";
-import { MakeDefaultButton, MakeGlobalButton } from "@/components/personalities/buttons";
+import { PersonalitySettings } from "@/components/personalities/personality-settings";
 
 function useTools(userId: string | undefined | null) {
     const { data } = useQuery(
@@ -52,10 +52,26 @@ export default function Page() {
     const [currentInstruction, setCurrentInstruction] = useState("");
     const [currentToolSelection, setCurrentToolSelection] = useState<string[]>([]);
     const [currentDocumentSelection, setCurrentDocumentSelection] = useState<string[]>([]);
+    const [globallyAvailable, setGloballyAvailable] = useState(false);
+    const [isDefault, setIsDefault] = useState(false);
     const queryClient = useQueryClient();
     const updateMutation = useMutation({
-        mutationFn: (personalityId: string) => {
-            return updatePersonality(personalityId, currentName, currentDescription, currentInstruction, currentToolSelection, currentDocumentSelection);
+        mutationFn: async (personalityId: string) => {
+            const newOwner = (globallyAvailable) ? "system" : (user?.email as string);
+            await updatePersonality(
+                personalityId,
+                currentName,
+                currentDescription,
+                currentInstruction,
+                currentToolSelection,
+                currentDocumentSelection,
+                newOwner
+            );
+            if (isDefault) {
+                await setDefaultPersonality(user?.email as string, personality?.id as string);
+            } else if (personality?.isDefault && !isDefault) {
+                await deleteDefaultPersonality(user?.email as string);
+            }
         },
         onSuccess: async () => {
             await queryClient.invalidateQueries(["listPersonalities", user?.email] as InvalidateQueryFilters);
@@ -71,11 +87,13 @@ export default function Page() {
         if (!personality) {
             return;
         }
-        setCurrentName(personality?.name);
-        setCurrentDescription(personality?.description);
-        setCurrentInstruction(personality?.instructions);
-        setCurrentToolSelection(personality?.tools || []);
-        setCurrentDocumentSelection(personality?.doc_ids || []);
+        setCurrentName(personality.name);
+        setCurrentDescription(personality.description);
+        setCurrentInstruction(personality.instructions);
+        setCurrentToolSelection(personality.tools || []);
+        setCurrentDocumentSelection(personality.doc_ids || []);
+        setGloballyAvailable(personality.owner === "system");
+        setIsDefault(personality.isDefault || false);
     }, [personality]);
 
     if (isLoading || personalityLoading) {
@@ -174,11 +192,13 @@ export default function Page() {
                                 setSelectedDocuments={setCurrentDocumentSelection}
                             />
                         </div>
-                        <Label>Settings</Label>
-                        <div className="flex gap-x-2 pb-2">
-                            <MakeGlobalButton owner={personality?.owner || ""} personalityId={personality?.id || ""} userId={user?.email as string} />
-                            <MakeDefaultButton isDefault={personality?.isDefault || false} personalityId={personality?.id || ""} userId={user?.email as string} />
-                        </div>
+                        <Label className="pt-2">Settings</Label>
+                        <PersonalitySettings
+                            setGloballyAvailable={setGloballyAvailable}
+                            setIsDefault={setIsDefault}
+                            isDefault={isDefault}
+                            isGlobal={globallyAvailable}
+                        />
                     </div>
                 </form>
                 <div className="flex flex-col w-full gap-y-2 pb-4">
@@ -188,6 +208,8 @@ export default function Page() {
                             setCurrentName(personality?.name || "");
                             setCurrentDescription(personality?.description || "");
                             setCurrentInstruction(personality?.instructions || "");
+                            setGloballyAvailable(personality?.owner === "system");
+                            setIsDefault(personality?.isDefault || false);
                         }}
                         disabled={updateMutation.isPending}
                     >

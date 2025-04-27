@@ -60,7 +60,7 @@ export function QuestionPacks({ highlightStyle, selectedStyle, userId, moduleNam
                                     <NewQuestionPack userId={userId} />
                                 </TabsContent>
                                 <TabsContent value="existing">
-                                    <ExistingQuestionPacks userId={userId} moduleName={moduleName} />
+                                    <ExistingQuestionPacks userId={userId} />
                                 </TabsContent>
                             </Tabs>
                         </div>

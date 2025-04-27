@@ -6,6 +6,25 @@ import postgres from "postgres";
 const uri = process.env.DB_URI || "unknown";
 const sql = postgres(uri, { connection: { application_name: "Jarvis" } });
 
+export async function getPack(id: string, userId: string) {
+    const getPack = sql`
+    SELECT 
+        id,
+        name, 
+        description
+    FROM common.question_packs
+    WHERE deleted = false AND id = ${id}
+    `;
+
+    try {
+        const res = await getPack;
+        return res[0] as QuestionPack;
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+}
+
 export async function createPack(id: string, description: string, name: string, owner: string) {
     console.log("creating question pack", id, description, name, owner);
     return await createPackHandler(id, description, name, owner);

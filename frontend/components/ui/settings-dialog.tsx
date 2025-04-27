@@ -5,7 +5,8 @@ import {
     Lightbulb,
     File,
     HelpCircle,
-    FolderSearch2
+    FolderSearch2,
+    PlusCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -32,6 +33,8 @@ import { UploadButton } from "../document-repo/buttons"
 import { Skeleton } from "./skeleton"
 import { Tooltip, TooltipTrigger } from "./tooltip"
 import { TooltipContent } from "@radix-ui/react-tooltip"
+import { ExistingQuestionPacks } from "../question-packs/existing-question-packs"
+import { useRouter } from "next/navigation"
 
 const data = {
     nav: [
@@ -51,6 +54,7 @@ interface BuildDialogContentProps {
 }
 
 function BuildDialogContent({ selection, userId, data, uploadRunning, setUploadRunning, docsLoading }: BuildDialogContentProps) {
+    const router = useRouter();
     switch (selection) {
         case "Documents":
             return (
@@ -82,8 +86,21 @@ function BuildDialogContent({ selection, userId, data, uploadRunning, setUploadR
             );
         case "Question Packs":
             return (
-                <div className="flex mx-auto w-full h-full border rounded-lg items-center justify-center p-4 mt-20">
-                    <span className="text-slate-400">Coming soon</span>
+                <div className="flex flex-col w-full h-full p-4 space-y-2">
+                    <header className="flex flex-col h-12 items-center">
+                        <div className="items-center w-full justify-end flex">
+                            <Button
+                                onClick={() => router.push("/question-repo/new")}
+                                variant="ghost"
+                                className="group border flex items-center gap-3 px-0 pl-2 py-2 text-sm font-medium text-slate-700 transition-all hover:text-purple-500 dark:text-slate-300 dark:hover:text-purple-400"
+                            >
+                                <span className="pr-2 text-xs flex gap-x-2">
+                                    <PlusCircle className="w-4 h-4" /> New Question Pack
+                                </span>
+                            </Button>
+                        </div>
+                    </header>
+                    <ExistingQuestionPacks userId={userId} />
                 </div>
             );
         case "Document Packs":
