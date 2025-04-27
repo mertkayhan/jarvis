@@ -5,7 +5,7 @@ import { AlertDialog, AlertDialogContent } from "../ui/alert-dialog";
 import { useState } from "react";
 import { Tooltip, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { TooltipContent } from "@radix-ui/react-tooltip";
-import { DeleteButton, DeleteDefaultButton, EditButton, MakeDefaultButton, MakeGlobalButton } from "./buttons";
+import { DeleteButton, DeleteDefaultButton, EditButton } from "./buttons";
 import { DeleteDialog } from "./delete-dialog";
 
 interface PersonalityViewProps {
