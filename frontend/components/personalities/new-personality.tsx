@@ -8,10 +8,12 @@ import { createPersonality, setDefaultPersonality } from "@/components/personali
 import { uuidv4 } from "@/lib/utils";
 import { InvalidateQueryFilters, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/lib/hooks/use-toast";
-import { DocumentSelectionMenu } from "../document-repo/document-selection-menu";
+// import { DocumentSelectionMenu } from "../document-repo/document-selection-menu";
 import { PersonalitySettings } from "./personality-settings";
 import { Tools } from "./personality-tools";
 import { IconSpinner } from "../ui/icons";
+import { KnowledgeDropdown } from "../knowledge/knowledge-dropdown";
+import { KnowledgeMenu } from "../knowledge/knowledge-selection-menu";
 
 interface NewPersonalityProps {
     userId: string
@@ -25,6 +27,8 @@ export function NewPersonality({ userId }: NewPersonalityProps) {
     const [isDefault, setIsDefault] = useState(false);
     const [toolSelection, setToolSelection] = useState<string[]>([]);
     const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+    const [kind, setKind] = useState("");
+    const [knowledgeOpen, setKnowledgeOpen] = useState(false);
 
     const { toast } = useToast();
 
@@ -96,13 +100,30 @@ export function NewPersonality({ userId }: NewPersonalityProps) {
                     </div>
                     <div className="flex py-2 gap-x-2 items-center">
                         <Label >Internal Knowledge</Label>
-                        <DocumentSelectionMenu
+                        <KnowledgeDropdown
+                            setKind={setKind}
+                            setOpen={setKnowledgeOpen}
+                            triggerButton={
+                                <Button variant="secondary">
+                                    Attach knowledge
+                                </Button>
+                            }
+                        />
+                        <KnowledgeMenu
+                            userId={userId}
+                            kind={kind}
+                            open={knowledgeOpen}
+                            setOpen={setKnowledgeOpen}
+                            selectedDocuments={selectedDocuments}
+                            setSelectedDocuments={setSelectedDocuments}
+                        />
+                        {/* <DocumentSelectionMenu
                             userId={userId}
                             selectedDocuments={selectedDocuments}
                             setSelectedDocuments={setSelectedDocuments}
                         >
                             <span className='px-2'>Attach documents</span>
-                        </DocumentSelectionMenu>
+                        </DocumentSelectionMenu> */}
                     </div>
                 </div>
                 <div className="flex flex-col p-4 w-full justify-end items-end h-full">

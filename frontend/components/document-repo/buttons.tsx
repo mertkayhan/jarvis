@@ -14,7 +14,6 @@ import { DialogTitle } from "@radix-ui/react-dialog";
 import { useToast } from "@/lib/hooks/use-toast";
 import { uuidv4 } from "@/lib/utils";
 import { ToastAction } from "../ui/toast";
-import { UploadResult } from "@/app/api/upload/route";
 
 interface UploadButtonProps {
     uploadRunning: boolean

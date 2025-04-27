@@ -6,7 +6,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTrigger } from "../ui/dialog";
 import { UploadDialog } from "./upload-dialog";
 import { Dispatch, RefObject, SetStateAction } from "react";
-import { DocumentSelectionMenu } from "../document-repo/document-selection-menu";
 
 interface UploadMenuProps {
     setSelectedImages: Dispatch<SetStateAction<File[]>>
@@ -39,7 +38,7 @@ export function UploadMenu({
 }: UploadMenuProps) {
     return (
         <>
-            {messagesLength > 0 && <DocumentSelectionMenu
+            {/* {messagesLength > 0 && <DocumentSelectionMenu
                 userId={userId}
                 setSelectedDocuments={setSelectedDocuments}
                 selectedDocuments={selectedDocuments}
@@ -55,7 +54,7 @@ export function UploadMenu({
                 }}>
                 <span className="sr-only">Attach documents</span>
                 <FilePlusIcon className='w-5 h-5' />
-            </DocumentSelectionMenu >}
+            </DocumentSelectionMenu >} */}
             <ImageUpload
                 selectedImagesTmp={selectedImagesTmp}
                 selectedPreviewsTmp={selectedPreviewsTmp}

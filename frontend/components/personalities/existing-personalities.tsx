@@ -24,7 +24,7 @@ export function ExistingPersonalities({ personalities, userId }: ExistingPersona
     }
     return (
         <div className="flex flex-col w-full h-full overflow-y-auto max-h-[600px]">
-            <span className="dark:text-slate-500 text-slate-400 text-base justify-start items-start w-full mb-10 mt-10 px-2">
+            <span className="dark:text-slate-500 text-slate-400 justify-start items-start w-full mb-10 mt-10 px-2 text-sm">
                 Personalities allow you to create customized AI assistants that can understand instructions, access specific knowledge, and perform tailored tasks to enhance productivity and decision-making. You can get an overview of existing personalities and manage them here.
             </span>
             <div className="flex flex-col w-full">

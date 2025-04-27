@@ -122,7 +122,7 @@ export function SettingsDialog({ userId }: { userId: string }) {
     const [uploadRunning, setUploadRunning] = React.useState(false);
 
     return (
-        <Dialog open={open} onOpenChange={(open) => {
+        <Dialog modal={false} open={open} onOpenChange={(open) => {
             setSelection("Documents");
             setOpen(open);
         }}>
@@ -135,7 +135,7 @@ export function SettingsDialog({ userId }: { userId: string }) {
                             onClick={() => setOpen(true)}
                             className="rounded-lg hover:bg-slate-200 p-1.5 text-slate-600 transition-colors duration-200 dark:hover:bg-slate-800 dark:text-slate-200"
                         >
-                            <Lightbulb />
+                            <Lightbulb className="h-4 w-4 md:h-6 md:w-6" />
                         </Button>
                     </TooltipTrigger>
                 </DialogTrigger>
@@ -143,7 +143,7 @@ export function SettingsDialog({ userId }: { userId: string }) {
                     Knowledge
                 </TooltipContent>
             </Tooltip>
-            <DialogContent className="h-[60vh] overflow-hidden p-0 max-w-none w-[60vw] bg-gradient-to-br from-slate-50 via-white to-slate-100 shadow-lg dark:from-slate-800 dark:via-slate-900 dark:to-black">
+            <DialogContent className="overflow-hidden p-0 max-w-none w-[80vw] h-[80vh] bg-gradient-to-br from-slate-50 via-white to-slate-100 shadow-lg dark:from-slate-800 dark:via-slate-900 dark:to-black">
                 <SidebarProvider className="items-start">
                     <Sidebar collapsible="none" className="hidden md:flex bg-gradient-to-br from-slate-50 via-white to-slate-100 shadow-lg dark:from-slate-800 dark:via-slate-900 dark:to-black">
                         <SidebarContent>
@@ -155,11 +155,11 @@ export function SettingsDialog({ userId }: { userId: string }) {
                                                 <SidebarMenuButton
                                                     asChild
                                                     isActive={item.name === selection}
-                                                    className="hover:text-purple-500 dark:text-slate-300 dark:hover:text-purple-400 data-[active=true]:bg-slate-600 data-[active=true]:text-purple-500 dark:data-[active=true]:text-purple-400"
+                                                    className="hover:text-purple-500 dark:text-slate-300 dark:hover:text-purple-400 dark:data-[active=true]:bg-slate-600 data-[active=true]:text-purple-500 dark:data-[active=true]:text-purple-400 data-[active=true]:bg-slate-200"
                                                 >
                                                     <Button
                                                         variant="ghost"
-                                                        className="justify-start flex w-full dark:hover:bg-slate-600 hover:bg-slate-400"
+                                                        className="justify-start flex w-full dark:hover:bg-slate-600 hover:bg-slate-200"
                                                         onClick={() => setSelection(item.name)}
                                                     >
                                                         <item.icon />

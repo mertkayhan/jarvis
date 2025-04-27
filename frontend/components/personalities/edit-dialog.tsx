@@ -6,13 +6,14 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Personality } from "@/lib/types";
 import { Checkbox } from "../ui/checkbox";
-import { DocumentSelectionMenu } from "../document-repo/document-selection-menu";
 import { cn } from "@/lib/utils";
-import { buttonVariants } from "../ui/button";
+import { Button, buttonVariants } from "../ui/button";
 import { InvalidateQueryFilters, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAvailableTools, updatePersonality } from "./personality-actions";
 import { useToast } from "@/lib/hooks/use-toast";
 import { IconSpinner } from "../ui/icons";
+import { KnowledgeDropdown } from "../knowledge/knowledge-dropdown";
+import { KnowledgeMenu } from "../knowledge/knowledge-selection-menu";
 
 interface EditDialogProps {
     personality: Personality
@@ -27,6 +28,8 @@ export function EditDialog({ personality, userId, setOpen }: EditDialogProps) {
     const [currentToolSelection, setCurrentToolSelection] = useState(personality.tools || []);
     const [currentDocumentSelection, setCurrentDocumentSelection] = useState(personality.doc_ids || []);
     const { toast } = useToast();
+    const [kind, setKind] = useState("");
+    const [knowledgeOpen, setKnowledgeOpen] = useState(false);
 
     const queryClient = useQueryClient();
     const updateMutation = useMutation({
@@ -106,21 +109,32 @@ export function EditDialog({ personality, userId, setOpen }: EditDialogProps) {
                             })}
                         </div>
                     </div>
+                    {/* TODO:
                     <div className="flex py-2 gap-x-2 items-center">
                         <Label >Internal Knowledge</Label>
-                        <DocumentSelectionMenu
+                        <KnowledgeDropdown
+                            setKind={setKind}
+                            setOpen={setKnowledgeOpen}
+                            triggerButton={
+                                <Button variant="secondary">
+                                    Attach knowledge
+                                </Button>
+                            }
+                        />
+                        <KnowledgeMenu
                             userId={userId}
+                            kind={kind}
+                            open={knowledgeOpen}
+                            setOpen={setKnowledgeOpen}
                             selectedDocuments={currentDocumentSelection}
                             setSelectedDocuments={setCurrentDocumentSelection}
-                        >
-                            <span className='px-2'>Attach documents</span>
-                        </DocumentSelectionMenu>
-                    </div>
+                        />
+                    </div> */}
                 </div>
             </form>
             <AlertDialogFooter>
                 <AlertDialogCancel
-                    className={cn(buttonVariants({ variant: "outline" }))}
+                    className={cn(buttonVariants({ variant: "destructive" }))}
                     onClick={() => {
                         setCurrentName(personality.name);
                         setCurrentDescription(personality.description);
