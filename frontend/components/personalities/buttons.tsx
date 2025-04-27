@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { deleteDefaultPersonality, ListPersonalitiesResp, makePersonalityGlobal, setDefaultPersonality } from "./personality-actions";
 import { useToast } from "@/lib/hooks/use-toast";
 import { Dispatch, SetStateAction } from "react";
+import { useRouter } from "next/navigation";
 
 interface DeleteDefaultButtonProps {
     userId: string
@@ -52,22 +53,16 @@ export function DeleteDefaultButton({ userId }: DeleteDefaultButtonProps) {
     );
 }
 
-interface EditButtonProps {
-    setType: Dispatch<SetStateAction<string>>
-    setOpen: Dispatch<SetStateAction<boolean>>
-}
-
-export function EditButton({ setType, setOpen }: EditButtonProps) {
+export function EditButton({ personalityId }: { personalityId: string }) {
+    const router = useRouter();
     return (
         <Button
             variant="ghost"
             size="icon"
             className="hover:text-blue-500 flex justify-center items-center"
             type="button"
-            onClick={(e) => {
-                e.preventDefault();
-                setType("edit");
-                setOpen(true);
+            onClick={() => {
+                router.push(`/personality/${personalityId}`);
             }}
         >
             <svg
@@ -142,7 +137,7 @@ export function MakeGlobalButton({ owner, userId, personalityId }: MakeGlobalBut
 
     return (
         <Button
-            variant="outline"
+            variant="secondary"
             type="button"
             onClick={(e) => {
                 e.preventDefault();
@@ -184,7 +179,7 @@ export function MakeDefaultButton({ isDefault, userId, personalityId }: MakeDefa
 
     return (
         <Button
-            variant="outline"
+            variant="secondary"
             type="button"
             disabled={isDefault}
             onClick={(e) => {

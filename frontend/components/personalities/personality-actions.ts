@@ -7,6 +7,35 @@ import { getToken } from "../chat/chat-actions";
 const uri = process.env.DB_URI || "unknown";
 const sql = postgres(uri, { connection: { application_name: "Jarvis" } });
 
+export async function getPersonality(id: string, userId: string) {
+    const getPersonality = sql`
+    SELECT 
+        id,
+        description,
+        instructions,
+        name,
+        owner,
+        tools,
+        doc_ids
+    FROM common.personalities
+    WHERE deleted = false AND owner IN ('system', ${userId}) AND id = ${id}
+    `;
+    const getDefaultPersonality = sql`
+    SELECT 
+        user_id,
+        personality_id
+    FROM common.default_personalities 
+    WHERE user_id = ${userId}
+    `
+    try {
+        const [personality, defaultPersonality] = await Promise.all([getPersonality, getDefaultPersonality]);
+        return { ...personality[0], isDefault: (defaultPersonality.length) ? personality[0].id === defaultPersonality[0]["personality_id"] : false } as Personality
+    } catch (error) {
+        console.error("failed to fetch personality", error);
+        throw error;
+    }
+}
+
 export async function getAvailableTools(userId: string) {
     const backendUrl = process.env.BACKEND_URL;
     const token = await getToken();
