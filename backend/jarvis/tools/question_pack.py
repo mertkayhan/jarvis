@@ -1,16 +1,12 @@
 import json
 from typing import Any, Dict, Optional
 from jarvis.context import Context
-from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
 from jarvis.context.context import ToolContext
 import re
 from markdownify import markdownify as md
 
-from jarvis.question_pack.retriever import retrieve
-
-
-embedding = OpenAIEmbeddings(model="text-embedding-3-small")
+from jarvis.question_pack.retriever import generate_embedding, retrieve
 
 
 async def question_pack_retriever(
@@ -18,9 +14,7 @@ async def question_pack_retriever(
     pack_id: str,
     ctx: Optional[Context] = None,
 ) -> Dict[str, Any]:
-    query_embedding = (
-        "[" + ",".join(map(lambda x: str(x), await embedding.aembed_query(query))) + "]"
-    )
+    query_embedding = await generate_embedding(query)
     res = await retrieve(pack_id, query_embedding, query)
     image_pattern = r'<img\s+[^>]*src=["\']([^"\']+)["\'][^>]*>'
     resp = {"content": []}

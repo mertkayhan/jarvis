@@ -162,7 +162,7 @@ export default function QuestionList({ items, selectedQuestion, setSelectedQuest
             <div className="flex flex-col flex-1 gap-2 p-4 pt-0 overflow-x-hidden">
                 {(!items || !items.length) &&
                     <div className="flex w-full h-full items-center justify-center">
-                        <span className="text-base text-slate-200 dark:text-slate-600">No question found</span>
+                        <span className="text-base text-slate-200 dark:text-slate-600">No questions found</span>
                     </div>
                 }
                 {items?.map((item: Question) => (

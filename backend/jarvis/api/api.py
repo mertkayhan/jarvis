@@ -1,19 +1,25 @@
 import datetime
+import json
 import os
 from typing import Annotated, Optional
+from uuid import UUID, uuid4
 from fastapi import Depends, FastAPI, File, UploadFile, Form, Request, HTTPException
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer
 import gcsfs
 from pydantic import BaseModel
 from jarvis.auth.auth import validate_token
 from jarvis.blob_storage.storage import generate_download_signed_url_v4
+from jarvis.db.db import get_connection_pool
 from jarvis.document_parsers.parser import resolve_parser
 from jarvis.queries.query_handlers import insert_doc
+from jarvis.question_pack.retriever import generate_embedding
 from jarvis.tools import ALL_AVAILABLE_TOOLS
 from models import ALL_SUPPORTED_MODELS
 from fastapi.responses import ORJSONResponse
 from dotenv import load_dotenv
 import logging
+from psycopg.rows import dict_row
+
 
 load_dotenv()
 
@@ -223,6 +229,180 @@ async def upload_document(
         return UploadResult(success=False, message="document processing failed")
 
 
+class Question(BaseModel):
+    question: str
+
+
+class CreateQuestionResp(BaseModel):
+    id: str
+    question: str
+
+
+@app.post("/api/v1/users/{user_id}/question-packs/{question_pack_id}/questions")
+async def create_question(user_id: str, question_pack_id: str, payload: Question):
+    # TODO: transaction log
+    try:
+        question_embedding = await generate_embedding(payload.question)
+        question_id = str(uuid4())
+        query = """
+        INSERT INTO common.question_pairs(
+            id, pack_id, question, updated_by, answer, question_embedding
+        ) values(
+            %(question_id)s, %(question_pack_id)s, %(question)s, %(user_id)s, %(dummy)s, %(vector)s
+        )
+        RETURNING id
+        """
+        pool = await get_connection_pool()
+
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                async with conn.transaction():
+                    resp = await cur.execute(
+                        query,
+                        {
+                            "question_id": question_id,
+                            "question_pack_id": question_pack_id,
+                            "question": payload.question,
+                            "user_id": user_id,
+                            "dummy": "",
+                            "vector": question_embedding,
+                        },
+                    )
+                    res = await resp.fetchall()
+                    id = res[0]["id"]
+                    assert str(id) == question_id, "Internal error!"
+                    return CreateQuestionResp(id=question_id, question=payload.question)
+    except Exception as err:
+        logger.error(f"failed to create new question: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create question due to internal error, please check the server logs for more information.",
+        )
+
+
+class UserQuestion(BaseModel):
+    id: UUID
+    metadata: Optional[str] = None
+    question: str
+    answer: str
+    updatedAt: datetime.datetime
+    updatedBy: str
+
+
+class QuestionList(BaseModel):
+    questions: list[UserQuestion]
+    maxPageNo: int
+
+
+@app.get("/api/v1/users/{user_id}/question-packs/{question_pack_id}/questions")
+async def get_question_pack_questions(
+    user_id: str,
+    question_pack_id: str,
+    offset: int = 0,
+    limit: int = 10,
+    deleted: bool = False,
+    tags: Optional[str] = None,
+    additional_info: Optional[str] = None,
+    search_query: Optional[str] = None,
+) -> QuestionList:
+    # TODO: max page no
+    # transaction log
+    try:
+        tag_list = None if not tags else tags.split(",")
+        additional_info_list = (
+            None
+            if not additional_info
+            else [json.loads(element) for element in additional_info.split(",")]
+        )
+
+        tag_filter = "" if not tag_list else "tag = ANY(%(tags)s)"
+        additional_info_filter = (
+            ""
+            if not additional_info_list
+            else " OR ".join(
+                [
+                    f"{element['key']}={element['value']}"
+                    for element in additional_info_list
+                ]
+            )
+        )
+        similarity_filter = (
+            ""
+            if not search_query
+            else "(1 - (question_embedding <=> %(vector)s::vector)) > 0.3 OR x.question_tsv @@ plainto_tsquery('english', %(search_query)s)"
+        )
+        similarity_col = (
+            ""
+            if not search_query
+            else "(0.7 * (1 - (question_embedding <=> %(vector)s::vector)) + 0.3 * ts_rank_cd(x.question_tsv, plainto_tsquery('english', %(search_query)s))) AS similarity"
+        )
+        real_offset = offset * limit
+        query_vector = (
+            None if not search_query else await generate_embedding(search_query)
+        )
+
+        query = f"""
+            SELECT 
+                DISTINCT x.id,
+                x.answer, 
+                x.question, 
+                x.updated_at,
+                x.updated_by {"," if len(similarity_col) > 0 else ""}
+                {similarity_col}
+            FROM common.question_pairs x
+            LEFT JOIN common.question_tags y 
+            ON x.id = y.question_id 
+            LEFT JOIN common.question_additional_info z 
+            ON x.id = z.question_id
+            WHERE x.deleted = %(deleted)s 
+                AND x.pack_id = %(question_pack_id)s
+                {"AND" if len(tag_filter) > 0 else ""} {tag_filter} 
+                {"AND" if len(additional_info_filter) > 0 else ""} {additional_info_filter}
+                {"AND" if len(similarity_filter) > 0 else ""} {similarity_filter}
+            ORDER BY x.updated_at DESC {", similarity DESC" if len(similarity_col) > 0 else ""}
+            LIMIT %(limit)s
+            OFFSET %(offset)s
+        """
+
+        logger.info(f"query:\n{query}")
+
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                resp = await cur.execute(
+                    query,
+                    {
+                        "tags": tag_list,
+                        "vector": query_vector,
+                        "search_query": search_query,
+                        "limit": limit,
+                        "offset": real_offset,
+                        "deleted": deleted,
+                        "question_pack_id": question_pack_id,
+                    },
+                )
+                res = await resp.fetchall()
+                return QuestionList(
+                    maxPageNo=10,
+                    questions=[
+                        UserQuestion(
+                            id=r["id"],
+                            answer=r["answer"],
+                            question=r["question"],
+                            updatedAt=r["updated_at"],
+                            updatedBy=r["updated_by"],
+                        )
+                        for r in res
+                    ],
+                )
+    except Exception as err:
+        logger.error(f"failed to list questions: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to list questions due to internal error, please check the server logs for more information.",
+        )
+
+
 # @app.get("/api/v1/users/{user_id}/chats/{chat_id}/messages")
 # async def get_chat_messages(user_id: str, chat_id: str, deleted: bool = False):
 #     pass
@@ -386,22 +566,6 @@ async def upload_document(
 # async def update_question_pack(
 #     user_id: str, question_pack_id: str, payload: QuestionPack
 # ):
-#     pass
-
-
-# @app.get("/api/v1/users/{user_id}/question-packs/{question_pack_id}/questions")
-# async def get_question_pack_questions(
-#     user_id: str, question_pack_id: str, deleted: bool = False
-# ):
-#     pass
-
-
-# class Question(BaseModel):
-#     question: str
-
-
-# @app.post("/api/v1/users/{user_id}/question-packs/{question_pack_id}/questions")
-# async def create_question(user_id: str, question_pack_id: str, payload: Question):
 #     pass
 
 

@@ -36,9 +36,9 @@ export function Questions({
     const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
     const [searchQuery, setSearchQuery] = useState<string | null>(null);
     const { data, isLoading, error, refetch } = useQuery({
-        queryKey: ["listQuestions", packId, page, currentFilters, searchQuery],
-        queryFn: () => listQuestions(packId, page - 1, currentFilters, searchQuery),
-        enabled: !!packId && !!page,
+        queryKey: ["listQuestions", userId, packId, page, currentFilters, searchQuery],
+        queryFn: () => listQuestions(userId, packId, page - 1, currentFilters, searchQuery),
+        enabled: !!packId && !!page && !!userId,
     });
     const { toast } = useToast();
     const queryClient = useQueryClient();

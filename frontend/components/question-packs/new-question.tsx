@@ -5,7 +5,6 @@ import { InvalidateQueryFilters, useMutation, useQueryClient } from "@tanstack/r
 import { Dispatch, SetStateAction, useState } from "react";
 import { createQuestion } from "./question-actions";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
-import { uuidv4 } from "@/lib/utils";
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
 import { IconSpinner } from "../ui/icons";
@@ -25,7 +24,7 @@ export function NewQuestion({ userId, packId, setCurrentFilters, dispatch }: New
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const mutation = useMutation({
-        mutationFn: (questionId: string) => createQuestion(packId, questionId, question, userId),
+        mutationFn: () => createQuestion(packId, question, userId),
         onSuccess: async () => {
             await queryClient.invalidateQueries(["listQuestions", packId, 1] as InvalidateQueryFilters);
             toast({ title: "Successfully created new question" });
@@ -66,8 +65,7 @@ export function NewQuestion({ userId, packId, setCurrentFilters, dispatch }: New
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
-                        const newId = uuidv4();
-                        mutation.mutate(newId);
+                        mutation.mutate();
                     }}
                 >
                     <div className="grid gap-4 py-4">

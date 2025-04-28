@@ -3,10 +3,9 @@
 import { AdditionalInfo, Question, QuestionFilter } from "@/lib/types";
 import { Tag } from "emblor";
 import postgres from 'postgres';
-import OpenAI from "openai";
 import { uuidv4 } from "@/lib/utils";
+import { getToken } from "../chat/chat-actions";
 
-const openai = new OpenAI();
 const uri = process.env.DB_URI || "unknown";
 const sql = postgres(uri, { connection: { application_name: "Jarvis" } });
 
@@ -27,150 +26,176 @@ function registerTransaction(operation: string, prevValue: string, currentValue:
     return query;
 }
 
-export async function listQuestions(packId: string, offset: number, filters: QuestionFilter | null, searchQuery: string | null) {
+export async function listQuestions(userId: string, packId: string, offset: number, filters: QuestionFilter | null, searchQuery: string | null) {
     console.log("listing questions", packId, offset, filters, searchQuery);
-    return await listQuestionsHandler(packId, offset, filters, searchQuery);
+    return await listQuestionsHandler(userId, packId, offset, filters, searchQuery);
 }
 
-async function listQuestionsHandler(packId: string, offset: number, filters: QuestionFilter | null, searchQuery: string | null) {
+async function listQuestionsHandler(userId: string, packId: string, offset: number, filters: QuestionFilter | null, searchQuery: string | null) {
+    const backendUrl = process.env.BACKEND_URL;
+    const token = await getToken();
     const batchSize = 10;
-
-    const tagFilter = (filters && filters.tags.size > 0)
-        ? `AND y.tag IN (${[...filters.tags].map((v) => `'${v}'`).join(", ")})`
-        : ``;
-
-    const buildAdditionalInfoFilter = () => {
-        if (!filters || filters.additionalInfo.length === 0) {
-            return ``;
+    let baseUrl = `${backendUrl}/api/v1/users/${userId}/question-packs/${packId}/questions?offset=${offset}&limit=${batchSize}`;
+    if (searchQuery) {
+        baseUrl += `&search_query=${encodeURIComponent(searchQuery)}`;
+    }
+    if (filters?.tags) {
+        const tagList = [...filters.tags];
+        baseUrl += `&tags=${tagList.join(",")}`;
+    }
+    if (filters?.additionalInfo) {
+        const info = filters.additionalInfo.map((a) => {
+            return JSON.stringify({ key: a.key, value: [...a.value].join(",") });
+        }).join(",");
+        baseUrl += `$additional_info=${encodeURIComponent(info)}`;
+    }
+    const resp = await fetch(
+        baseUrl,
+        {
+            method: "GET",
+            headers: { "Authorization": `Bearer ${token}` },
         }
+    );
 
-        const filterString = filters.additionalInfo.map((item) =>
-            `(z.key = '${item.key}' AND z.value IN (${[...item.value].map((v) => `'${v}'`).join(", ")}))`
-        ).join(" OR ");
+    if (!resp.ok) {
+        throw new Error("failed to list questions");
+    }
+    const data = await resp.json();
+    return data as ListQuestionsResp;
 
-        return `AND (${filterString})`;
-    };
-    const additionalInfoFilter = buildAdditionalInfoFilter();
+    // 
 
-    const buildSearchQuerySimilarityAndFilter = async () => {
-        if (!searchQuery?.trim()) {
-            return { col: "", filter: "" };
-        }
-        const embedding = await openai.embeddings.create({
-            model: "text-embedding-3-small",
-            input: searchQuery,
-            encoding_format: "float",
-        });
-        const vector = `'[${embedding.data[0].embedding.join(",")}]'::vector`;
-        return {
-            col: `(
-                0.7 * (1 - (question_embedding <=> ${vector})) + 0.3 * ts_rank_cd(x.question_tsv, plainto_tsquery('english', '${searchQuery}'))
-            ) AS similarity`,
-            filter: `AND ((1 - (question_embedding <=> ${vector})) > 0.3 OR x.question_tsv @@ plainto_tsquery('english', '${searchQuery}'))`
-        }
-    };
-    const { col, filter } = await buildSearchQuerySimilarityAndFilter();
+    // const tagFilter = (filters && filters.tags.size > 0)
+    //     ? `AND y.tag IN (${[...filters.tags].map((v) => `'${v}'`).join(", ")})`
+    //     : ``;
 
-    const listQuestions = `
-        SELECT 
-            DISTINCT x.id,
-            x.answer, 
-            x.question, 
-            x.updated_at,
-            x.updated_by ${(col.length > 0) ? `,` : ``}
-            ${col}
-        FROM common.question_pairs x
-        LEFT JOIN common.question_tags y 
-        ON x.id = y.question_id 
-        LEFT JOIN common.question_additional_info z 
-        ON x.id = z.question_id
-        WHERE x.deleted = false 
-            AND x.pack_id = '${packId}'::uuid
-            ${tagFilter} 
-            ${additionalInfoFilter}
-            ${filter}
-        ORDER BY x.updated_at DESC ${(col.length > 0) ? `, similarity DESC` : ``}
-        LIMIT ${batchSize} 
-        OFFSET ${offset * batchSize}
-    `;
+    // const buildAdditionalInfoFilter = () => {
+    //     if (!filters || filters.additionalInfo.length === 0) {
+    //         return ``;
+    //     }
 
-    const questionCount = `
-        SELECT COUNT(DISTINCT x.*)
-        FROM common.question_pairs x
-        LEFT JOIN common.question_tags y 
-        ON x.id = y.question_id 
-        LEFT JOIN common.question_additional_info z 
-        ON x.id = z.question_id
-        WHERE x.deleted = false 
-            AND x.pack_id = '${packId}'::uuid
-            ${tagFilter} 
-            ${additionalInfoFilter}
-            ${filter}
-    `;
+    //     const filterString = filters.additionalInfo.map((item) =>
+    //         `(z.key = '${item.key}' AND z.value IN (${[...item.value].map((v) => `'${v}'`).join(", ")}))`
+    //     ).join(" OR ");
+
+    //     return `AND (${filterString})`;
+    // };
+    // const additionalInfoFilter = buildAdditionalInfoFilter();
+
+    // const buildSearchQuerySimilarityAndFilter = async () => {
+    //     if (!searchQuery?.trim()) {
+    //         return { col: "", filter: "" };
+    //     }
+    //     const embedding = await openai.embeddings.create({
+    //         model: "text-embedding-3-small",
+    //         input: searchQuery,
+    //         encoding_format: "float",
+    //     });
+    //     const vector = `'[${embedding.data[0].embedding.join(",")}]'::vector`;
+
+    //     return {
+    //         col: `(
+    //             0.7 * (1 - (question_embedding <=> ${vector})) + 0.3 * ts_rank_cd(x.question_tsv, plainto_tsquery('english', '${searchQuery}'))
+    //         ) AS similarity`,
+    //         filter: `AND ((1 - (question_embedding <=> ${vector})) > 0.3 OR x.question_tsv @@ plainto_tsquery('english', '${searchQuery}'))`
+    //     }
+    // };
+    // const { col, filter } = await buildSearchQuerySimilarityAndFilter();
+
+    // const listQuestions = `
+    //     SELECT 
+    //         DISTINCT x.id,
+    //         x.answer, 
+    //         x.question, 
+    //         x.updated_at,
+    //         x.updated_by ${(col.length > 0) ? `,` : ``}
+    //         ${col}
+    //     FROM common.question_pairs x
+    //     LEFT JOIN common.question_tags y 
+    //     ON x.id = y.question_id 
+    //     LEFT JOIN common.question_additional_info z 
+    //     ON x.id = z.question_id
+    //     WHERE x.deleted = false 
+    //         AND x.pack_id = '${packId}'::uuid
+    //         ${tagFilter} 
+    //         ${additionalInfoFilter}
+    //         ${filter}
+    //     ORDER BY x.updated_at DESC ${(col.length > 0) ? `, similarity DESC` : ``}
+    //     LIMIT ${batchSize} 
+    //     OFFSET ${offset * batchSize}
+    // `;
+
+    // const questionCount = `
+    //     SELECT COUNT(DISTINCT x.*)
+    //     FROM common.question_pairs x
+    //     LEFT JOIN common.question_tags y 
+    //     ON x.id = y.question_id 
+    //     LEFT JOIN common.question_additional_info z 
+    //     ON x.id = z.question_id
+    //     WHERE x.deleted = false 
+    //         AND x.pack_id = '${packId}'::uuid
+    //         ${tagFilter} 
+    //         ${additionalInfoFilter}
+    //         ${filter}
+    // `;
 
     // console.log("query:", listQuestions);
 
-    try {
-        const [_, questions, count] = await sql.begin((sql) => [
-            sql`SET search_path = 'common'`,
-            sql.unsafe(listQuestions),
-            sql.unsafe(questionCount)
-        ]);
-        // console.log(questions);
-        console.log(count);
-        return {
-            questions: questions.map((r) => ({
-                id: r.id,
-                answer: r.answer,
-                question: r.question,
-                updatedAt: new Date(r["updated_at"]),
-                updatedBy: r["updated_by"],
-            })),
-            maxPageNo: Math.floor((count[0].count - 1) / batchSize) + 1,
-        } as ListQuestionsResp;
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+    // try {
+    //     const [_, questions, count] = await sql.begin((sql) => [
+    //         sql`SET search_path = 'common'`,
+    //         sql.unsafe(listQuestions),
+    //         sql.unsafe(questionCount)
+    //     ]);
+    //     // console.log(questions);
+    //     console.log(count);
+    //     return {
+    //         questions: questions.map((r) => ({
+    //             id: r.id,
+    //             answer: r.answer,
+    //             question: r.question,
+    //             updatedAt: new Date(r["updated_at"]),
+    //             updatedBy: r["updated_by"],
+    //         })),
+    //         maxPageNo: Math.floor((count[0].count - 1) / batchSize) + 1,
+    //     } as ListQuestionsResp;
+    // } catch (error) {
+    //     console.error(error);
+    //     throw error;
+    // }
 }
 
 
 
-interface CreateQuestionResp { }
-
-export async function createQuestion(packId: string, questionId: string, question: string, userId: string) {
-    console.log("create question", packId, questionId, question, userId);
-    return await createQuestionHandler(packId, questionId, question, userId);
+interface CreateQuestionResp {
+    id: string
+    question: string
 }
 
-async function createQuestionHandler(packId: string, questionId: string, question: string, userId: string) {
-    try {
-        const dummy = "";
-        const embedding = await openai.embeddings.create({
-            model: "text-embedding-3-small",
-            input: question,
-            encoding_format: "float",
-        });
-        const vector = sql.unsafe(`'[${embedding.data[0].embedding.join(",")}]'::vector`);
-        const transactionQuery = registerTransaction("CREATE QUESTION", "NULL", question, userId, questionId);
-        const res = await sql.begin((sql) => [
-            sql`SET search_path = 'common'`,
-            sql`${transactionQuery}`,
-            sql`
-            INSERT INTO common.question_pairs(
-                id, pack_id, question, updated_by, answer, question_embedding
-            ) values(
-                ${questionId}, ${packId}, ${question}, ${userId}, ${dummy}, ${vector}
-            )
-            RETURNING id
-    `
-        ]);
-        console.log("res", res);
-        return {} as CreateQuestionResp;
-    } catch (error) {
-        console.error(error);
-        throw error;
+export async function createQuestion(packId: string, question: string, userId: string) {
+    console.log("create question", packId, question, userId);
+    return await createQuestionHandler(packId, question, userId);
+}
+
+async function createQuestionHandler(packId: string, question: string, userId: string) {
+    const backendUrl = process.env.BACKEND_URL;
+    const token = await getToken();
+    const resp = await fetch(
+        `${backendUrl}/api/v1/users/${userId}/question-packs/${packId}/questions`,
+        {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ question }),
+        }
+    );
+    if (!resp.ok) {
+        throw new Error("failed to create question");
     }
+    const data = await resp.json();
+    return data as CreateQuestionResp;
 }
 
 interface DeleteQuestionResp {

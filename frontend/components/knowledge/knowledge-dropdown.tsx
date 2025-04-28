@@ -2,17 +2,25 @@
 
 import { File, FolderSearch2, HelpCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { Dispatch, ReactNode, SetStateAction } from "react";
+import { Dispatch, ReactNode, SetStateAction, useState } from "react";
 
 interface KnowledgeDropdownProps {
     setKind: Dispatch<SetStateAction<string>>
     setOpen: Dispatch<SetStateAction<boolean>>
     triggerButton: ReactNode
+    dropdownOpen?: boolean
+    setDropdownOpen?: Dispatch<SetStateAction<boolean>>
 }
 
-export function KnowledgeDropdown({ setKind, setOpen, triggerButton }: KnowledgeDropdownProps) {
+export function KnowledgeDropdown({ setKind, setOpen, triggerButton, dropdownOpen, setDropdownOpen }: KnowledgeDropdownProps) {
+    const [internalDropdownOpen, internalSetDropdownOpen] = useState(false);
+
     return (
-        <DropdownMenu modal={false}>
+        <DropdownMenu
+            modal={false}
+            open={(dropdownOpen) ? dropdownOpen : internalDropdownOpen}
+            onOpenChange={(open) => (setDropdownOpen) ? setDropdownOpen(open) : internalSetDropdownOpen(open)}
+        >
             <DropdownMenuTrigger asChild>
                 {triggerButton}
             </DropdownMenuTrigger>
@@ -23,13 +31,19 @@ export function KnowledgeDropdown({ setKind, setOpen, triggerButton }: Knowledge
                 }}>
                     <File /> Attach Documents
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => {
+                    setKind("Question Pack");
+                    setOpen(true);
+                }}>
                     <HelpCircle /> Attach Question Pack
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => {
+                    setKind("Document Pack");
+                    setOpen(true);
+                }}>
                     <FolderSearch2 /> Attach Document Pack
                 </DropdownMenuItem>
             </DropdownMenuContent>
-        </DropdownMenu>
+        </DropdownMenu >
     );
 }

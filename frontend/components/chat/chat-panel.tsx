@@ -30,6 +30,8 @@ export interface ChatPanelProps {
   setSelectedDocuments: Dispatch<SetStateAction<string[]>>
   dispatch: Dispatch<any>
   selectedDocumentPack: DocumentPack | null
+  setSelectedQuestionPack: Dispatch<SetStateAction<QuestionPack | null>>
+  setSelectedDocumentPack: Dispatch<SetStateAction<DocumentPack | null>>
 }
 
 export function ChatPanel({
@@ -51,7 +53,9 @@ export function ChatPanel({
   selectedQuestionPack,
   setSelectedDocuments,
   dispatch,
-  selectedDocumentPack
+  selectedDocumentPack,
+  setSelectedQuestionPack,
+  setSelectedDocumentPack
 }: ChatPanelProps) {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [selectedPreviews, setSelectedPreviews] = useState<string[]>([]);
@@ -154,6 +158,8 @@ export function ChatPanel({
             detectHallucination={detectHallucination}
             setDetectHallucination={setDetectHallucination}
             userId={userId}
+            setSelectedQuestionPack={setSelectedQuestionPack}
+            setSelectedDocumentPack={setSelectedDocumentPack}
           />
         </div>
       </div>
