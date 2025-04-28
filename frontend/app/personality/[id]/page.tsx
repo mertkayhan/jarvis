@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { IconSpinner } from "@/components/ui/icons";
 import { Sidebar } from "@/components/sidebar/chat-sidebar";
 import { PersonalitySettings } from "@/components/personalities/personality-settings";
+import { DocumentPack, QuestionPack } from "@/lib/types";
 
 function useTools(userId: string | undefined | null) {
     const { data } = useQuery(
@@ -52,6 +53,9 @@ export default function Page() {
     const [currentInstruction, setCurrentInstruction] = useState("");
     const [currentToolSelection, setCurrentToolSelection] = useState<string[]>([]);
     const [currentDocumentSelection, setCurrentDocumentSelection] = useState<string[]>([]);
+    // TODO:
+    const [currentQuestionPackSelection, setCurrentQuestionPackSelection] = useState<QuestionPack | null>(null);
+    const [currentDocumentPackSelection, setCurrentDocumentPackSelection] = useState<DocumentPack | null>(null);
     const [globallyAvailable, setGloballyAvailable] = useState(false);
     const [isDefault, setIsDefault] = useState(false);
     const queryClient = useQueryClient();
@@ -190,6 +194,8 @@ export default function Page() {
                                 setOpen={setKnowledgeOpen}
                                 selectedDocuments={currentDocumentSelection}
                                 setSelectedDocuments={setCurrentDocumentSelection}
+                                setSelectedDocumentPack={setCurrentDocumentPackSelection}
+                                setSelectedQuestionPack={setCurrentQuestionPackSelection}
                             />
                         </div>
                         <Label className="pt-2">Settings</Label>

@@ -17,6 +17,7 @@ import Loading from "@/app/loading";
 import { IconSpinner } from "@/components/ui/icons";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/sidebar/chat-sidebar";
+import { DocumentPack, QuestionPack } from "@/lib/types";
 
 
 export default function Page() {
@@ -27,6 +28,9 @@ export default function Page() {
     const [isDefault, setIsDefault] = useState(false);
     const [toolSelection, setToolSelection] = useState<string[]>([]);
     const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+    // TODO:
+    const [selectedQuestionPack, setSelectedQuestionPack] = useState<QuestionPack | null>(null);
+    const [selectedDocumentPack, setSelectedDocumentPack] = useState<DocumentPack | null>(null);
     const [kind, setKind] = useState("");
     const [knowledgeOpen, setKnowledgeOpen] = useState(false);
     const { user, error, isLoading } = useUser();
@@ -137,6 +141,8 @@ export default function Page() {
                                     setOpen={setKnowledgeOpen}
                                     selectedDocuments={selectedDocuments}
                                     setSelectedDocuments={setSelectedDocuments}
+                                    setSelectedDocumentPack={setSelectedDocumentPack}
+                                    setSelectedQuestionPack={setSelectedQuestionPack}
                                 />
                             </div>
                         </div>
