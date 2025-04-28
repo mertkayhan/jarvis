@@ -69,7 +69,7 @@ export function ExistingQuestionPacks({ userId }: ExistingQuestionPacksProps) {
     }
 
     return (
-        <div className="flex flex-col w-full h-full flex-grow overflow-y-auto max-h-[600px] border py-2">
+        <div className="flex flex-col w-full h-full flex-grow overflow-y-auto max-h-[600px] border py-2 rounded-lg">
             <div className="flex flex-col w-full h-full space-y-2">
                 {data.packs.map((pack, i) => (
                     <div
@@ -97,7 +97,7 @@ export function ExistingQuestionPacks({ userId }: ExistingQuestionPacksProps) {
                             }}
                         >
                             <svg
-                                className="w-5 h-5"
+                                className="w-4 h-4"
                                 viewBox="0 0 15 15"
                                 fill="none"
                                 xmlns="http://www.w3.org/2000/svg"
@@ -117,7 +117,7 @@ export function ExistingQuestionPacks({ userId }: ExistingQuestionPacksProps) {
                             aria-label={`Delete ${pack.name}`}
                         >
                             <svg
-                                className="w-5 h-5 md:w-6 md:h-6"
+                                className="w-4 h-4"
                                 viewBox="0 0 15 15"
                                 fill="none"
                                 xmlns="http://www.w3.org/2000/svg"

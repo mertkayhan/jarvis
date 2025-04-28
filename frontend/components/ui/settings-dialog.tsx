@@ -6,7 +6,8 @@ import {
     File,
     HelpCircle,
     FolderSearch2,
-    PlusCircle
+    PlusCircle,
+    Info
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -31,16 +32,17 @@ import { useToast } from "@/lib/hooks/use-toast"
 import { UserDocument } from "@/lib/types"
 import { UploadButton } from "../document-repo/buttons"
 import { Skeleton } from "./skeleton"
-import { Tooltip, TooltipTrigger } from "./tooltip"
+import { Tooltip, TooltipProvider, TooltipTrigger } from "./tooltip"
 import { TooltipContent } from "@radix-ui/react-tooltip"
 import { ExistingQuestionPacks } from "../question-packs/existing-question-packs"
 import { useRouter } from "next/navigation"
+import { ExistingDocumentPacks } from "../document-packs/existing-document-packs"
 
 const data = {
     nav: [
-        { name: "Documents", icon: File },
-        { name: "Question Packs", icon: HelpCircle },
-        { name: "Document Packs", icon: FolderSearch2 },
+        { name: "Documents", icon: File, tooltip: "Manage your documents easily. Upload, download, or delete files as needed." },
+        { name: "Question Packs", icon: HelpCircle, tooltip: "Manage your domain specific question answer pairs easily." },
+        { name: "Document Packs", icon: FolderSearch2, tooltip: "Manage your domain specific document sets easily." },
     ],
 }
 
@@ -105,8 +107,21 @@ function BuildDialogContent({ selection, userId, data, uploadRunning, setUploadR
             );
         case "Document Packs":
             return (
-                <div className="flex mx-auto w-full h-full border rounded-lg items-center justify-center p-4 mt-20">
-                    <span className="text-slate-400">Coming soon</span>
+                <div className="flex flex-col w-full h-full p-4 space-y-2">
+                    <header className="flex flex-col h-12 items-center">
+                        <div className="items-center w-full justify-end flex">
+                            <Button
+                                onClick={() => router.push("/document-repo/new")}
+                                variant="ghost"
+                                className="group border flex items-center gap-3 px-0 pl-2 py-2 text-sm font-medium text-slate-700 transition-all hover:text-purple-500 dark:text-slate-300 dark:hover:text-purple-400"
+                            >
+                                <span className="pr-2 text-xs flex gap-x-2">
+                                    <PlusCircle className="w-4 h-4" /> New Document Pack
+                                </span>
+                            </Button>
+                        </div>
+                    </header>
+                    <ExistingDocumentPacks />
                 </div>
             );
         default:
@@ -166,26 +181,34 @@ export function SettingsDialog({ userId }: { userId: string }) {
                         <SidebarContent>
                             <SidebarGroup>
                                 <SidebarGroupContent>
-                                    <SidebarMenu>
-                                        {data.nav.map((item) => (
-                                            <SidebarMenuItem key={item.name} >
-                                                <SidebarMenuButton
-                                                    asChild
-                                                    isActive={item.name === selection}
-                                                    className="hover:text-purple-500 dark:text-slate-300 dark:hover:text-purple-400 dark:data-[active=true]:bg-slate-600 data-[active=true]:text-purple-500 dark:data-[active=true]:text-purple-400 data-[active=true]:bg-slate-200"
-                                                >
-                                                    <Button
-                                                        variant="ghost"
-                                                        className="justify-start flex w-full dark:hover:bg-slate-600 hover:bg-slate-200"
-                                                        onClick={() => setSelection(item.name)}
+                                    <TooltipProvider>
+                                        <SidebarMenu>
+                                            {data.nav.map((item) => (
+                                                <SidebarMenuItem key={item.name} >
+                                                    <SidebarMenuButton
+                                                        asChild
+                                                        isActive={item.name === selection}
+                                                        className="hover:text-purple-500 dark:text-slate-300 dark:hover:text-purple-400 dark:data-[active=true]:bg-slate-600 data-[active=true]:text-purple-500 dark:data-[active=true]:text-purple-400 data-[active=true]:bg-slate-200"
                                                     >
-                                                        <item.icon />
-                                                        <span>{item.name}</span>
-                                                    </Button>
-                                                </SidebarMenuButton>
-                                            </SidebarMenuItem>
-                                        ))}
-                                    </SidebarMenu>
+                                                        <Button
+                                                            variant="ghost"
+                                                            className="justify-start flex w-full dark:hover:bg-slate-600 hover:bg-slate-200"
+                                                            onClick={() => setSelection(item.name)}
+                                                        >
+                                                            <item.icon />
+                                                            <span>{item.name}</span>
+                                                            <Tooltip key={item.name}>
+                                                                <TooltipTrigger asChild>
+                                                                    <Info />
+                                                                </TooltipTrigger>
+                                                                <TooltipContent side="right" sideOffset={10} className="text-xs bg-background text-primary p-1">{item.tooltip}</TooltipContent>
+                                                            </Tooltip>
+                                                        </Button>
+                                                    </SidebarMenuButton>
+                                                </SidebarMenuItem>
+                                            ))}
+                                        </SidebarMenu>
+                                    </TooltipProvider>
                                 </SidebarGroupContent>
                             </SidebarGroup>
                         </SidebarContent>

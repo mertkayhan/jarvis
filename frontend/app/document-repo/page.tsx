@@ -17,7 +17,7 @@ import { uuidv4 } from "@/lib/utils";
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { DialogTitle } from "@radix-ui/react-dialog";
 import { InvalidateQueryFilters, RefetchQueryFilters, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { HashLoader } from "react-spinners";
 import remarkGfm from "remark-gfm";
@@ -55,11 +55,11 @@ function useUserHook() {
 
 export default function Page() {
     const { user, userLoading, userError } = useUserHook();
-    const params = useParams<{ packId: string }>();
+    const params = useSearchParams();
     const { data, error, isLoading } = useQuery({
-        queryKey: ["listPackDocs", params?.packId],
-        enabled: !!params?.packId,
-        queryFn: () => listDocuments(params?.packId as string)
+        queryKey: ["listPackDocs", params.get("packId")],
+        enabled: !!params.get("packId"),
+        queryFn: () => listDocuments(params.get("packId") as string)
     });
     const { toast } = useToast();
     const inputRef = useRef<HTMLInputElement>(null);
@@ -100,7 +100,7 @@ export default function Page() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     base64Data: readRes.data,
-                    path: `document_packs/${params?.packId}/raw/${readRes.fname}`,
+                    path: `document_packs/${params.get("packId")}/raw/${readRes.fname}`,
                     uploadId: uuidv4(),
                 })
             });
@@ -116,18 +116,18 @@ export default function Page() {
     const workflowHandler = async (files: FileList | null) => {
         setWorkflowStage(Workflow.Upload);
         setOpen(true);
-        localStorage.setItem(`document_repo_run_${params?.packId}`, "true");
+        localStorage.setItem(`document_repo_run_${params.get("packId")}`, "true");
         await handleUpload(files);
-        socket?.emit("build_document_pack", { "pack_id": params?.packId }, async (resp: string) => {
+        socket?.emit("build_document_pack", { "pack_id": params.get("packId") }, async (resp: string) => {
             if (resp !== "done") {
                 console.error("failed to create document pack");
                 toast({ title: "Failed to create document pack", variant: "destructive", description: "Please check server logs for more information" });
                 setTimeout(() => setOpen(false), 100);
                 return;
             }
-            await queryClient.invalidateQueries(["listPackDocs", params?.packId] as InvalidateQueryFilters);
-            await queryClient.refetchQueries(["listPackDocs", params?.packId] as RefetchQueryFilters);
-            localStorage.removeItem(`document_repo_run_${params?.packId}`);
+            await queryClient.invalidateQueries(["listPackDocs", params.get("packId")] as InvalidateQueryFilters);
+            await queryClient.refetchQueries(["listPackDocs", params.get("packId")] as RefetchQueryFilters);
+            localStorage.removeItem(`document_repo_run_${params.get("packId")}`);
             setTimeout(() => setOpen(false), 100);
         });
     }
@@ -143,7 +143,7 @@ export default function Page() {
             default:
                 return;
             case "fail":
-                localStorage.removeItem(`document_repo_run_${params?.packId}`);
+                localStorage.removeItem(`document_repo_run_${params.get("packId")}`);
                 return;
             case "uploading":
                 setWorkflowStage(Workflow.Upload);
@@ -161,30 +161,30 @@ export default function Page() {
                 setWorkflowStage(Workflow.Finalize);
                 return;
             case "done":
-                localStorage.removeItem(`document_repo_run_${params?.packId}`);
+                localStorage.removeItem(`document_repo_run_${params.get("packId")}`);
                 setOpen(false);
                 return;
         }
     }
 
     useEffect(() => {
-        if (params?.packId) {
-            const hasActiveRun = localStorage.getItem(`document_repo_run_${params.packId}`);
+        if (params.get("packId")) {
+            const hasActiveRun = localStorage.getItem(`document_repo_run_${params.get("packId")}`);
             if (hasActiveRun === "true") {
-                getWorkflowStatus(params.packId).then((resp) => {
+                getWorkflowStatus(params.get("packId") as string).then((resp) => {
                     resolveWorkflowStage(resp);
                     setOpen(true);
                 });
             }
         }
 
-    }, [params?.packId]);
+    }, [params.get("packId")]);
 
     useEffect(() => {
-        if (!params?.packId) {
+        if (!params.get("packId")) {
             return;
         }
-        socket?.emit("join_pack_room", { "room_id": params.packId });
+        socket?.emit("join_pack_room", { "room_id": params.get("packId") });
         socket?.on("workflow_update", (data: { stage: string }) => {
             // console.log("update:", data);
             resolveWorkflowStage(data.stage);
@@ -192,7 +192,7 @@ export default function Page() {
         return () => {
             socket?.off("workflow_update");
         }
-    }, [socket, params?.packId]);
+    }, [socket, params.get("packId")]);
 
     if (isLoading || userLoading) {
         return (
@@ -200,7 +200,7 @@ export default function Page() {
         );
     }
 
-    if (userError || !params?.packId) {
+    if (userError || !params.get("packId")) {
         router.push("/forbidden");
     }
 
@@ -277,9 +277,6 @@ export default function Page() {
                             showChatList={false}
                             moduleName="jarvis"
                             userId={user?.email as string}
-                            showDocumentRepo={false}
-                            showModelSelection={false}
-                            showPersonalities={false}
                         />
                     </div>
                 </div>
@@ -293,13 +290,13 @@ export default function Page() {
                                     <div className="flex justify-end gap-x-2">
                                         <Button
                                             variant="ghost"
-                                            className="group border flex items-center gap-3 px-0 pl-2 py-3 text-base font-medium text-slate-700 transition-all hover:translate-x-1 hover:text-purple-500 dark:text-slate-300 dark:hover:text-purple-400"
+                                            className="group border flex items-center gap-3 px-0 pl-2 py-2 text-sm font-medium text-slate-700 transition-all hover:text-purple-500 dark:text-slate-300 dark:hover:text-purple-400"
                                             type="button"
                                             onClick={() => inputRef.current?.click()}
                                         >
                                             <>
                                                 <svg
-                                                    className="w-5 h-5"
+                                                    className="w-4 h-4"
                                                     viewBox="0 0 15 15"
                                                     strokeWidth={2}
                                                     fill="none"
@@ -312,7 +309,7 @@ export default function Page() {
                                                         clipRule="evenodd"
                                                     />
                                                 </svg>
-                                                <span className="pr-2">Upload Document</span>
+                                                <span className="pr-2 text-xs">Upload Document</span>
                                             </>
                                         </Button>
                                     </div>
@@ -330,7 +327,7 @@ export default function Page() {
                                                 ))}
                                             </ul>
                                         ) : (
-                                            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                                            <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-sm">
                                                 No documents available. Upload a new one!
                                             </div>
                                         )}
@@ -352,7 +349,7 @@ export default function Page() {
                                             return;
                                         }
                                         setQueryRunning(true);
-                                        socket?.emit("query_docs", { "pack_id": params?.packId, "query": searchQuery }, (resp: QueryResp) => {
+                                        socket?.emit("query_docs", { "pack_id": params.get("packId"), "query": searchQuery }, (resp: QueryResp) => {
                                             setSearchSummary(resp.response);
                                             setSearchResults(resp.context_enriched.sources);
                                             setTimeout(() => setQueryRunning(false), 100);
