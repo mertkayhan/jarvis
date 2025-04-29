@@ -15,9 +15,11 @@ export default function Page() {
     const { user, error, isLoading } = useUser();
 
     useEffect(() => {
+        // TODO: when page no is missing
         const pageNo = searchParams?.get("page");
         const packId = searchParams?.get("pack_id");
-        console.log("page no", pageNo)
+        // console.log("page no", pageNo);
+        // console.log("pack id", packId);
         if (pageNo && Number(pageNo) > 0) {
             router.replace(`?pack_id=${packId}&page=${pageNo}`)
         } else if (pageNo && Number(pageNo) <= 0) {

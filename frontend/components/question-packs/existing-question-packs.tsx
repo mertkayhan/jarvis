@@ -77,7 +77,7 @@ export function ExistingQuestionPacks({ userId }: ExistingQuestionPacksProps) {
                         key={i}
                     >
                         <a
-                            href={`/question-repo?pack_id=${pack.id}`}
+                            href={`/question-repo?pack_id=${pack.id}&page=1`}
                             className="flex flex-col w-full mx-4"
                         >
                             <span className="font-medium truncate text-xs">{pack.name}</span>

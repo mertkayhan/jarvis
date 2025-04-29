@@ -41,13 +41,18 @@ async function listQuestionsHandler(userId: string, packId: string, offset: numb
     }
     if (filters?.tags) {
         const tagList = [...filters.tags];
-        baseUrl += `&tags=${tagList.join(",")}`;
+        for (const t of tagList) {
+            baseUrl += `&tags=${t}`;
+        }
     }
     if (filters?.additionalInfo) {
         const info = filters.additionalInfo.map((a) => {
             return JSON.stringify({ key: a.key, value: [...a.value].join(",") });
-        }).join(",");
-        baseUrl += `$additional_info=${encodeURIComponent(info)}`;
+        });
+
+        for (const i of info) {
+            baseUrl += `&additional_info=${encodeURIComponent(i)}`;
+        }
     }
     const resp = await fetch(
         baseUrl,
@@ -61,108 +66,8 @@ async function listQuestionsHandler(userId: string, packId: string, offset: numb
         throw new Error("failed to list questions");
     }
     const data = await resp.json();
+    // console.log("data", data);
     return data as ListQuestionsResp;
-
-    // 
-
-    // const tagFilter = (filters && filters.tags.size > 0)
-    //     ? `AND y.tag IN (${[...filters.tags].map((v) => `'${v}'`).join(", ")})`
-    //     : ``;
-
-    // const buildAdditionalInfoFilter = () => {
-    //     if (!filters || filters.additionalInfo.length === 0) {
-    //         return ``;
-    //     }
-
-    //     const filterString = filters.additionalInfo.map((item) =>
-    //         `(z.key = '${item.key}' AND z.value IN (${[...item.value].map((v) => `'${v}'`).join(", ")}))`
-    //     ).join(" OR ");
-
-    //     return `AND (${filterString})`;
-    // };
-    // const additionalInfoFilter = buildAdditionalInfoFilter();
-
-    // const buildSearchQuerySimilarityAndFilter = async () => {
-    //     if (!searchQuery?.trim()) {
-    //         return { col: "", filter: "" };
-    //     }
-    //     const embedding = await openai.embeddings.create({
-    //         model: "text-embedding-3-small",
-    //         input: searchQuery,
-    //         encoding_format: "float",
-    //     });
-    //     const vector = `'[${embedding.data[0].embedding.join(",")}]'::vector`;
-
-    //     return {
-    //         col: `(
-    //             0.7 * (1 - (question_embedding <=> ${vector})) + 0.3 * ts_rank_cd(x.question_tsv, plainto_tsquery('english', '${searchQuery}'))
-    //         ) AS similarity`,
-    //         filter: `AND ((1 - (question_embedding <=> ${vector})) > 0.3 OR x.question_tsv @@ plainto_tsquery('english', '${searchQuery}'))`
-    //     }
-    // };
-    // const { col, filter } = await buildSearchQuerySimilarityAndFilter();
-
-    // const listQuestions = `
-    //     SELECT 
-    //         DISTINCT x.id,
-    //         x.answer, 
-    //         x.question, 
-    //         x.updated_at,
-    //         x.updated_by ${(col.length > 0) ? `,` : ``}
-    //         ${col}
-    //     FROM common.question_pairs x
-    //     LEFT JOIN common.question_tags y 
-    //     ON x.id = y.question_id 
-    //     LEFT JOIN common.question_additional_info z 
-    //     ON x.id = z.question_id
-    //     WHERE x.deleted = false 
-    //         AND x.pack_id = '${packId}'::uuid
-    //         ${tagFilter} 
-    //         ${additionalInfoFilter}
-    //         ${filter}
-    //     ORDER BY x.updated_at DESC ${(col.length > 0) ? `, similarity DESC` : ``}
-    //     LIMIT ${batchSize} 
-    //     OFFSET ${offset * batchSize}
-    // `;
-
-    // const questionCount = `
-    //     SELECT COUNT(DISTINCT x.*)
-    //     FROM common.question_pairs x
-    //     LEFT JOIN common.question_tags y 
-    //     ON x.id = y.question_id 
-    //     LEFT JOIN common.question_additional_info z 
-    //     ON x.id = z.question_id
-    //     WHERE x.deleted = false 
-    //         AND x.pack_id = '${packId}'::uuid
-    //         ${tagFilter} 
-    //         ${additionalInfoFilter}
-    //         ${filter}
-    // `;
-
-    // console.log("query:", listQuestions);
-
-    // try {
-    //     const [_, questions, count] = await sql.begin((sql) => [
-    //         sql`SET search_path = 'common'`,
-    //         sql.unsafe(listQuestions),
-    //         sql.unsafe(questionCount)
-    //     ]);
-    //     // console.log(questions);
-    //     console.log(count);
-    //     return {
-    //         questions: questions.map((r) => ({
-    //             id: r.id,
-    //             answer: r.answer,
-    //             question: r.question,
-    //             updatedAt: new Date(r["updated_at"]),
-    //             updatedBy: r["updated_by"],
-    //         })),
-    //         maxPageNo: Math.floor((count[0].count - 1) / batchSize) + 1,
-    //     } as ListQuestionsResp;
-    // } catch (error) {
-    //     console.error(error);
-    //     throw error;
-    // }
 }
 
 
@@ -263,7 +168,7 @@ async function updateAnswerHandler(questionId: string, answer: string, userId: s
             RETURNING id, answer
 `
         ]);
-        console.log("res", res);
+        // console.log("res", res);
         return { ...res[1][0] } as UpdateAnswerResp;
     } catch (error) {
         console.error(error);

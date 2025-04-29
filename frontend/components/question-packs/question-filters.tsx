@@ -3,7 +3,7 @@
 import { FilterIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
-import { Dispatch, Reducer, SetStateAction, useReducer } from "react";
+import { Dispatch, SetStateAction } from "react";
 import { MultiSelectAdditionalInfoValues } from "./multi-select-additional-info-values";
 import { MultiSelectTags } from "./multi-select-tags";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -13,7 +13,6 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import { Tooltip, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { TooltipContent } from "@radix-ui/react-tooltip";
 import { QuestionFilter } from "@/lib/types";
-import { useQueryClient } from "@tanstack/react-query";
 
 interface QuestionFiltersProps {
     setCurrentFilters: Dispatch<SetStateAction<QuestionFilter | null>>
@@ -25,10 +24,9 @@ export function QuestionFilters({ setCurrentFilters, filters, dispatch }: Questi
     const searchparams = useSearchParams();
     const packId = searchparams?.get("pack_id");
     const router = useRouter();
-    const queryClient = useQueryClient();
 
     return (
-        <Dialog>
+        <Dialog modal={false}>
             <DialogTrigger asChild>
                 <Button className="w-1/6" variant="outline">
                     <FilterIcon />
@@ -100,7 +98,7 @@ export function FilterRow({ packId, filter, dispatch }: FilterRowProps) {
         }
     };
 
-    console.log("filters", filter);
+    // console.log("filters", filter);
 
     return (
         <TooltipProvider>

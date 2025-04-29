@@ -1,11 +1,7 @@
-// import React, { ChangeEvent, Fragment, useCallback, useRef, useState } from "react";
 import { useEffect, useRef, useState } from "react";
 import MenuButton from "../MenuButton";
 import { useEditorState } from "@tiptap/react";
 import { useTiptapContext } from "../Provider";
-// import Dialog from "@/components/TiptapEditor/components/ui/Dialog";
-// import MediaLibrary from "@/components/MediaLibrary";
-// import useModal from "@/components/TiptapEditor/hooks/useModal";
 import { UploadDialog } from "@/components/chat/upload-dialog";
 import Button from "../ui/Button";
 
@@ -71,7 +67,7 @@ const ImageButton = () => {
         setSelectedPreviews={setSelectedPreviews}
         ref={inputRef}
       >
-        <MenuButton icon="Image" tooltip="Image" {...state} />
+        <MenuButton icon="Image" tooltip="Image" {...state} onClick={() => inputRef.current?.click()} />
       </UploadDialog>
     </>
   );
