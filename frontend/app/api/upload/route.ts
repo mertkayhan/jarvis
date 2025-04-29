@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
         const mode = formData.get('mode');
         const userId = formData.get('user_id');
         const file = formData.get('fileb');
-        const module = formData.get('module');
+        const moduleName = formData.get('module');
         const packId = formData.get("pack_id");
 
         if (!uploadId) {
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
         if (!mode) {
             throw new Error("Mode must be set");
         }
-        if (!module) {
+        if (!moduleName) {
             throw new Error("Module must be set");
         }
         if (!file || !(file instanceof Blob)) {
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
         backendFormData.append("upload_id", uploadId);
         backendFormData.append("mode", mode);
         backendFormData.append("fileb", file);
-        backendFormData.append("module", module);
+        backendFormData.append("module", moduleName);
         if (packId) {
             backendFormData.append("pack_id", packId);
         }
