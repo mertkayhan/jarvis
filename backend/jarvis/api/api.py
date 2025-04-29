@@ -30,6 +30,7 @@ from fastapi.responses import ORJSONResponse
 from dotenv import load_dotenv
 import logging
 from psycopg.rows import dict_row
+from fastapi.middleware.cors import CORSMiddleware
 
 
 load_dotenv()
@@ -72,6 +73,17 @@ app = FastAPI(
     dependencies=[Depends(JWTBearer())],
 )
 
+origins = []
+if os.getenv("CORS_ALLOWED_ORIGINS"):
+    origins = os.getenv("CORS_ALLOWED_ORIGINS").split(";")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 GOOGLE_PROJECT = os.getenv("GOOGLE_PROJECT")
 assert GOOGLE_PROJECT, "'GOOGLE_PROJECT' is not set!"
@@ -178,19 +190,30 @@ async def upload_document(
     fileb: Annotated[UploadFile, File()],
     upload_id: Annotated[str, Form()],
     mode: Annotated[str, Form()],
+    module: Annotated[str, Form()],
+    pack_id: Annotated[Optional[str], Form()] = None,
 ) -> UploadResult:
     # TODO:
     # Security:
     # Input Validation: Missing input validation for user_id, upload_id, and fname can lead to injection attacks.
     # File Size Limits: Implement file size limits to prevent denial-of-service.
     # File Type Validation: Validate file content (e.g., using libmagic) to prevent malicious uploads, not just the extension.
-    # Asynchronous Processing: Parsing is synchronous, potentially causing timeouts for large files. Use a background task queue (Celery, Redis Queue) for asynchronous processing.
     # GCS Dependency: Tightly coupled to GCS. Abstract the storage mechanism for easier switching to other solutions.
+    # Stream the file end to end
 
     logger.info(f"received document {fileb.filename} for user {user_id}")
 
     try:
-        target_path = f"{DOCUMENT_BUCKET}/raw/{user_id}/{upload_id}/{fileb.filename}"
+        if module == "document_repo":
+            target_path = (
+                f"{DOCUMENT_BUCKET}/raw/{user_id}/{upload_id}/{fileb.filename}"
+            )
+        elif module == "document_pack" and pack_id is not None:
+            target_path = (
+                f"{DOCUMENT_BUCKET}/document_packs/{pack_id}/raw/{fileb.filename}"
+            )
+        else:
+            raise ValueError("unknown module")
         fs = gcsfs.GCSFileSystem(project=GOOGLE_PROJECT)  # type: ignore
         with fs.open(target_path, "wb") as f:
             f.write(fileb.file.read())  # type: ignore

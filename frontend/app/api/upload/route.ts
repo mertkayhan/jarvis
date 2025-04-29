@@ -18,16 +18,21 @@ export async function POST(req: NextRequest) {
 
         // Parse the incoming form data
         const formData = await req.formData();
-        const uploadId = formData.get('uploadId');
+        const uploadId = formData.get('upload_id');
         const mode = formData.get('mode');
-        const userId = formData.get('userId');
-        const file = formData.get('file');
+        const userId = formData.get('user_id');
+        const file = formData.get('fileb');
+        const module = formData.get('module');
+        const packId = formData.get("pack_id");
 
         if (!uploadId) {
             throw new Error("Upload ID must be set");
         }
         if (!mode) {
             throw new Error("Mode must be set");
+        }
+        if (!module) {
+            throw new Error("Module must be set");
         }
         if (!file || !(file instanceof Blob)) {
             throw new Error('Invalid file data');
@@ -38,16 +43,29 @@ export async function POST(req: NextRequest) {
         backendFormData.append("upload_id", uploadId);
         backendFormData.append("mode", mode);
         backendFormData.append("fileb", file);
+        backendFormData.append("module", module);
+        if (packId) {
+            backendFormData.append("pack_id", packId);
+        }
+
+        const authHeader = req.headers.get("authorization");
+        if (!authHeader) {
+            throw new Error("Auth header is not set");
+        }
 
         const resp = await fetch(
             `${url}/api/v1/users/${userId}/uploads/document`,
             {
                 method: "POST",
                 body: backendFormData,
+                headers: { "Authorization": authHeader }
             }
         );
-
         const res = await resp.json();
+        if (!resp.ok) {
+            console.error(res);
+            throw new Error(`Request failed with ${resp.status}`);
+        }
         return NextResponse.json({
             "success": res.success,
             "message": res.message,

@@ -14,6 +14,7 @@ import { DialogTitle } from "@radix-ui/react-dialog";
 import { useToast } from "@/lib/hooks/use-toast";
 import { uuidv4 } from "@/lib/utils";
 import { ToastAction } from "../ui/toast";
+import { useAuthToken } from "@/lib/hooks/use-auth-token";
 
 interface UploadButtonProps {
     uploadRunning: boolean
@@ -26,6 +27,7 @@ export function UploadButton({ uploadRunning, userId, setUploadRunning }: Upload
     const [processingMode, setProcessingMode] = useState("accurate");
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const token = useAuthToken();
 
     const uploadMutation = useMutation({
         mutationFn: async (file: File) => {
@@ -37,13 +39,15 @@ export function UploadButton({ uploadRunning, userId, setUploadRunning }: Upload
 
             const formData = new FormData();
             const uploadId = uuidv4();
-            formData.append("file", file);
-            formData.append("uploadId", uploadId);
-            formData.append("userId", userId);
+            formData.append("fileb", file);
+            formData.append("upload_id", uploadId);
+            formData.append("user_id", userId);
             formData.append("mode", processingMode);
+            formData.append("module", "document_repo");
 
             const resp = await fetch("/api/upload", {
                 method: "POST",
+                headers: { "Authorization": `Bearer ${token}` },
                 body: formData
             });
 

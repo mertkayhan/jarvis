@@ -18,6 +18,7 @@ def model_factory(
 
     token_count = token_count or 0
 
+    # TODO: update this with latest models
     if model_selection == "automatic":
         logger.info("automatic model selection")
         if token_count > 100_000:

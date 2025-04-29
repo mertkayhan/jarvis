@@ -57,9 +57,9 @@ export default function Page() {
     const { user, userLoading, userError } = useUserHook();
     const params = useSearchParams();
     const { data, error, isLoading } = useQuery({
-        queryKey: ["listPackDocs", params.get("packId")],
-        enabled: !!params.get("packId"),
-        queryFn: () => listDocuments(params.get("packId") as string)
+        queryKey: ["listPackDocs", params.get("pack_id")],
+        enabled: !!params.get("pack_id"),
+        queryFn: () => listDocuments(params.get("pack_id") as string)
     });
     const { toast } = useToast();
     const inputRef = useRef<HTMLInputElement>(null);
@@ -95,14 +95,18 @@ export default function Page() {
                 console.error(error);
                 toast({ title: "Upload failed", description: "Failed to read the file", duration: Infinity });
             }
+            const formData = new FormData();
+            const uploadId = uuidv4();
+            formData.append("fileb", files[i]);
+            formData.append("upload_id", uploadId);
+            formData.append("user_id", user?.email as string);
+            formData.append("mode", "fast");
+            formData.append("module", "document_pack");
+            formData.append("pack_id", params.get("pack_id") as string);
             const resp = await fetch("/api/upload", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    base64Data: readRes.data,
-                    path: `document_packs/${params.get("packId")}/raw/${readRes.fname}`,
-                    uploadId: uuidv4(),
-                })
+                headers: { "Authorization": `Bearer ${token}` },
+                body: formData
             });
             if (!resp.ok) {
                 console.error(`File upload failed: ${JSON.stringify(data)}`);
@@ -116,18 +120,18 @@ export default function Page() {
     const workflowHandler = async (files: FileList | null) => {
         setWorkflowStage(Workflow.Upload);
         setOpen(true);
-        localStorage.setItem(`document_repo_run_${params.get("packId")}`, "true");
+        localStorage.setItem(`document_repo_run_${params.get("pack_id")}`, "true");
         await handleUpload(files);
-        socket?.emit("build_document_pack", { "pack_id": params.get("packId") }, async (resp: string) => {
+        socket?.emit("build_document_pack", { "pack_id": params.get("pack_id") }, async (resp: string) => {
             if (resp !== "done") {
                 console.error("failed to create document pack");
                 toast({ title: "Failed to create document pack", variant: "destructive", description: "Please check server logs for more information" });
                 setTimeout(() => setOpen(false), 100);
                 return;
             }
-            await queryClient.invalidateQueries(["listPackDocs", params.get("packId")] as InvalidateQueryFilters);
-            await queryClient.refetchQueries(["listPackDocs", params.get("packId")] as RefetchQueryFilters);
-            localStorage.removeItem(`document_repo_run_${params.get("packId")}`);
+            await queryClient.invalidateQueries(["listPackDocs", params.get("pack_id")] as InvalidateQueryFilters);
+            await queryClient.refetchQueries(["listPackDocs", params.get("pack_id")] as RefetchQueryFilters);
+            localStorage.removeItem(`document_repo_run_${params.get("pack_id")}`);
             setTimeout(() => setOpen(false), 100);
         });
     }
@@ -143,7 +147,7 @@ export default function Page() {
             default:
                 return;
             case "fail":
-                localStorage.removeItem(`document_repo_run_${params.get("packId")}`);
+                localStorage.removeItem(`document_repo_run_${params.get("pack_id")}`);
                 return;
             case "uploading":
                 setWorkflowStage(Workflow.Upload);
@@ -161,30 +165,30 @@ export default function Page() {
                 setWorkflowStage(Workflow.Finalize);
                 return;
             case "done":
-                localStorage.removeItem(`document_repo_run_${params.get("packId")}`);
+                localStorage.removeItem(`document_repo_run_${params.get("pack_id")}`);
                 setOpen(false);
                 return;
         }
     }
 
     useEffect(() => {
-        if (params.get("packId")) {
-            const hasActiveRun = localStorage.getItem(`document_repo_run_${params.get("packId")}`);
+        if (params.get("pack_id")) {
+            const hasActiveRun = localStorage.getItem(`document_repo_run_${params.get("pack_id")}`);
             if (hasActiveRun === "true") {
-                getWorkflowStatus(params.get("packId") as string).then((resp) => {
+                getWorkflowStatus(params.get("pack_id") as string).then((resp) => {
                     resolveWorkflowStage(resp);
                     setOpen(true);
                 });
             }
         }
 
-    }, [params.get("packId")]);
+    }, [params.get("pack_id")]);
 
     useEffect(() => {
-        if (!params.get("packId")) {
+        if (!params.get("pack_id")) {
             return;
         }
-        socket?.emit("join_pack_room", { "room_id": params.get("packId") });
+        socket?.emit("join_pack_room", { "room_id": params.get("pack_id") });
         socket?.on("workflow_update", (data: { stage: string }) => {
             // console.log("update:", data);
             resolveWorkflowStage(data.stage);
@@ -192,7 +196,7 @@ export default function Page() {
         return () => {
             socket?.off("workflow_update");
         }
-    }, [socket, params.get("packId")]);
+    }, [socket, params.get("pack_id")]);
 
     if (isLoading || userLoading) {
         return (
@@ -200,7 +204,7 @@ export default function Page() {
         );
     }
 
-    if (userError || !params.get("packId")) {
+    if (userError || !params.get("pack_id")) {
         router.push("/forbidden");
     }
 
@@ -349,7 +353,7 @@ export default function Page() {
                                             return;
                                         }
                                         setQueryRunning(true);
-                                        socket?.emit("query_docs", { "pack_id": params.get("packId"), "query": searchQuery }, (resp: QueryResp) => {
+                                        socket?.emit("query_docs", { "pack_id": params.get("pack_id"), "query": searchQuery }, (resp: QueryResp) => {
                                             setSearchSummary(resp.response);
                                             setSearchResults(resp.context_enriched.sources);
                                             setTimeout(() => setQueryRunning(false), 100);

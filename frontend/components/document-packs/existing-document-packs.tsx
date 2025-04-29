@@ -73,7 +73,7 @@ export function ExistingDocumentPacks() {
                     >
                         {/* TODO: */}
                         <a
-                            href={`/document-repo?packId=${pack.id}`}
+                            href={`/document-repo?pack_id=${pack.id}`}
                             className="flex flex-col w-full mx-4"
                         >
                             <span className="font-medium truncate text-xs">{pack.name}</span>

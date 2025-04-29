@@ -157,7 +157,7 @@ export function ChatInput({
                     </div>}
                     {additionalDocs.length > 0 && (
                         <span
-                            className='ml-2 text-xs px-3 py-1 rounded-md bg-gradient-to-r from-indigo-500 to-blue-400 text-white shadow-lg transition-all duration-300 ease-in-out'
+                            className='ml-2 text-xs px-3 py-1 rounded-md bg-gradient-to-r from-purple-400 to-indigo-500 text-white shadow-lg transition-all duration-300 ease-in-out'
                         >
                             <>
                                 {additionalDocs.length} additional document{additionalDocs.length > 1 ? 's' : ''} attached 📄✨
