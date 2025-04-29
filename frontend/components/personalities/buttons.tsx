@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { deleteDefaultPersonality, ListPersonalitiesResp, makePersonalityGlobal, setDefaultPersonality } from "./personality-actions";
 import { useToast } from "@/lib/hooks/use-toast";
 import { Dispatch, SetStateAction } from "react";
+import { useRouter } from "next/navigation";
 
 interface DeleteDefaultButtonProps {
     userId: string
@@ -52,22 +53,16 @@ export function DeleteDefaultButton({ userId }: DeleteDefaultButtonProps) {
     );
 }
 
-interface EditButtonProps {
-    setType: Dispatch<SetStateAction<string>>
-    setOpen: Dispatch<SetStateAction<boolean>>
-}
-
-export function EditButton({ setType, setOpen }: EditButtonProps) {
+export function EditButton({ personalityId }: { personalityId: string }) {
+    const router = useRouter();
     return (
         <Button
             variant="ghost"
             size="icon"
             className="hover:text-blue-500 flex justify-center items-center"
             type="button"
-            onClick={(e) => {
-                e.preventDefault();
-                setType("edit");
-                setOpen(true);
+            onClick={() => {
+                router.push(`/personality/${personalityId}`);
             }}
         >
             <svg
@@ -108,91 +103,6 @@ export function DeleteButton({ setOpen, setType }: DeleteButtonProps) {
             >
                 <path d="M5.5 1C5.22386 1 5 1.22386 5 1.5C5 1.77614 5.22386 2 5.5 2H9.5C9.77614 2 10 1.77614 10 1.5C10 1.22386 9.77614 1 9.5 1H5.5ZM3 3.5C3 3.22386 3.22386 3 3.5 3H5H10H11.5C11.7761 3 12 3.22386 12 3.5C12 3.77614 11.7761 4 11.5 4H11V12C11 12.5523 10.5523 13 10 13H5C4.44772 13 4 12.5523 4 12V4L3.5 4C3.22386 4 3 3.77614 3 3.5ZM5 4H10V12H5V4Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
             </svg>
-        </Button>
-    );
-}
-
-interface MakeGlobalButtonProps {
-    owner: string
-    userId: string
-    personalityId: string
-}
-
-export function MakeGlobalButton({ owner, userId, personalityId }: MakeGlobalButtonProps) {
-    const queryClient = useQueryClient();
-    const { toast } = useToast();
-    const makeGlobalMutation = useMutation({
-        mutationFn: (personalityId: string) => makePersonalityGlobal(personalityId),
-        onSuccess: async (resp) => {
-            await queryClient.setQueryData(["listPersonalities", userId], (old: ListPersonalitiesResp) => {
-                if (!old.personalities) {
-                    return null;
-                }
-                return {
-                    personalities: old.personalities.map((p) => (p.id === resp.id) ? { ...p, owner: "system" } : p)
-                };
-            });
-            toast({ title: "Successfully updated personality owner" });
-        },
-        onError: (error) => {
-            console.error("Error making personality global:", error);
-            toast({ title: "Failed to make the personality global", variant: "destructive" });
-        },
-    }, queryClient);
-
-    return (
-        <Button
-            variant="outline"
-            type="button"
-            onClick={(e) => {
-                e.preventDefault();
-                makeGlobalMutation.mutate(personalityId);
-            }}
-            disabled={owner === "system"}
-        >
-            Make global
-        </Button>
-    );
-}
-
-interface MakeDefaultButtonProps {
-    isDefault: boolean | undefined
-    userId: string
-    personalityId: string
-}
-
-export function MakeDefaultButton({ isDefault, userId, personalityId }: MakeDefaultButtonProps) {
-    const queryClient = useQueryClient();
-    const { toast } = useToast();
-    const setDefaultMutation = useMutation({
-        mutationFn: (personalityId: string) => setDefaultPersonality(userId, personalityId),
-        onSuccess: async (resp) => {
-            await queryClient.invalidateQueries(["getDefaultPersonality", userId] as InvalidateQueryFilters);
-            await queryClient.setQueryData(["listPersonalities", userId], (old: ListPersonalitiesResp) => {
-                if (!old.personalities) {
-                    return null;
-                }
-                return { personalities: old.personalities.map((p) => (p.id === resp.id) ? { ...p, isDefault: true } : p) };
-            });
-            toast({ title: "Successfully updated default personality" });
-        },
-        onError: (error) => {
-            console.error("Error updating default personality:", error);
-            toast({ title: "Failed updating default personality", variant: "destructive" });
-        },
-    }, queryClient);
-
-    return (
-        <Button
-            variant="outline"
-            type="button"
-            disabled={isDefault}
-            onClick={(e) => {
-                e.preventDefault();
-                setDefaultMutation.mutate(personalityId);
-            }}
-        >
-            Make default
         </Button>
     );
 }

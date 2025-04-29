@@ -1,12 +1,10 @@
 "use server"
 
 import { UserDocument } from "@/lib/types";
-import { GetSignedUrlConfig, Storage } from "@google-cloud/storage";
 import postgres from "postgres";
 
 const uri = process.env.DB_URI || "unknown";
 const sql = postgres(uri, { connection: { application_name: "Jarvis" } });
-const documentBucket = process.env.DOCUMENT_BUCKET || "unknown";
 
 export interface ListDocumentsResp {
     docs: UserDocument[] | null
@@ -34,7 +32,8 @@ async function listDocumentsHandler(userId: string) {
         const docs = await Promise.all(res.map(async (r) => {
             let href = ""
             try {
-                href = await generateV4ReadSignedUrl(`raw/${userId}/${r["document_id"]}/${r["document_name"]}`);
+                // TODO:
+                href = "" //await generateV4ReadSignedUrl(`raw/${userId}/${r["document_id"]}/${r["document_name"]}`);
             } catch (err) {
                 console.error(err);
             }
@@ -55,23 +54,6 @@ async function listDocumentsHandler(userId: string) {
         console.error(error);
         throw error;
     }
-}
-
-export async function generateV4ReadSignedUrl(fileName: string) {
-    // These options will allow temporary read access to the file
-    const options = {
-        version: 'v4',
-        action: 'read',
-        expires: Date.now() + 24 * 60 * 60 * 1000, // 15 minutes
-    } as GetSignedUrlConfig;
-
-    const storage = new Storage();
-    // Get a v4 signed URL for reading the file
-    const [url] = await storage
-        .bucket(documentBucket)
-        .file(fileName)
-        .getSignedUrl(options);
-    return url;
 }
 
 

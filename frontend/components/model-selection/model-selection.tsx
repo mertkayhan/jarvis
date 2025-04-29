@@ -54,15 +54,16 @@ export function ModelSelection({ userId }: ModelSelectionProps) {
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button
-                    variant="outline"
+                    variant="ghost"
                     role="combobox"
                     aria-expanded={open}
                     className="w-[200px] justify-between text-xs"
+                    size="sm"
                 >
                     {data
                         ? models?.find((model) => model.name === value)?.name
                         : "Select model..."}
-                    <ChevronsUpDown className="opacity-50" />
+                    <ChevronsUpDown className="opacity-50 w-3 h-3" />
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[200px] p-0">
@@ -85,7 +86,7 @@ export function ModelSelection({ userId }: ModelSelectionProps) {
                                     {model.name}
                                     <Check
                                         className={cn(
-                                            "ml-auto",
+                                            "ml-auto w-3 h-3",
                                             value === model.name ? "opacity-100" : "opacity-0"
                                         )}
                                     />

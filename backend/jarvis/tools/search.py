@@ -4,13 +4,14 @@ import os
 from typing import Optional
 from jarvis.context import Context, ToolContext
 from langchain_core.documents import Document
-
 from tavily import TavilyClient
 
-client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY")) if TAVILY_API_KEY else None
 
 
-async def top5_results(query: str, ctx: Optional[Context] = None) -> str:
+async def _top5_results_impl(query: str, ctx: Optional[Context] = None) -> str:
+    assert client is not None, "tavily client is None!"
     resp = client.search(
         query=query,
         search_depth="advanced",
@@ -50,3 +51,6 @@ async def top5_results(query: str, ctx: Optional[Context] = None) -> str:
     return json.dumps(
         {"results": results, "answer": answer, "follow_up_questions": follow_up_q}
     )
+
+
+top5_results = _top5_results_impl if TAVILY_API_KEY else None

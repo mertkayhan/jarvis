@@ -1,16 +1,17 @@
 'use client'
 
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
-import { NewPersonality } from "./new-personality";
-import { ExistingPersonalities } from "./existing-personalities";
-import { Dialog, DialogTrigger, DialogContent } from "../ui/dialog";
+import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "../ui/dialog";
 import { Button } from "../ui/button";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { listPersonalities } from "@/components/personalities/personality-actions";
 import { ClimbingBoxLoader } from "react-spinners";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/lib/hooks/use-toast";
+import { Accordion } from "../ui/accordion";
+import { PersonalityView } from "./personality-view";
+import { PlusCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface PersonalitiesProps {
     userId: string
@@ -23,12 +24,13 @@ export function Personalities({ userId, highlightStyle }: PersonalitiesProps) {
         queryFn: () => listPersonalities(userId),
         enabled: !!userId,
     });
-    const { toast } = useToast();
-    useEffect(() => {
-        if (error) {
-            toast({ title: "Failed to list personalities", variant: "destructive" });
-        }
-    }, [error]);
+    const router = useRouter();
+    // const { toast } = useToast();
+    // useEffect(() => {
+    //     if (error) {
+    //         toast({ title: "Failed to list personalities", variant: "destructive" });
+    //     }
+    // }, [error]);
 
     return (
         <Dialog modal={false}>
@@ -53,29 +55,48 @@ export function Personalities({ userId, highlightStyle }: PersonalitiesProps) {
                 </DialogTrigger>
                 <TooltipContent side="right">Personalities</TooltipContent>
             </Tooltip>
-            <DialogContent className="hidden md:flex max-w-none w-[80vw] h-[80vh] bg-gradient-to-br from-slate-50 via-white to-slate-100 p-10 shadow-lg dark:from-slate-800 dark:via-slate-900 dark:to-black">
+            <DialogContent className="hidden md:flex md:flex-col max-w-none w-[80vw] h-[80vh] bg-gradient-to-br from-slate-50 via-white to-slate-100 p-10 shadow-lg dark:from-slate-800 dark:via-slate-900 dark:to-black">
+                <DialogHeader>
+                    <DialogTitle className="text-2xl font-bold text-transparent bg-gradient-to-r from-purple-400 to-indigo-500 bg-clip-text">Personalities</DialogTitle>
+                    <DialogDescription className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        Personalities allow you to create customized AI assistants that can understand instructions, access specific knowledge, and perform tailored tasks to enhance productivity and decision-making. You can get an overview of existing personalities and manage them here.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="flex w-full justify-end pr-4">
+                    <Button
+                        variant="ghost"
+                        className="group border flex items-center gap-3 px-0 pl-2 py-2 text-sm font-medium text-slate-700 transition-all hover:text-purple-500 dark:text-slate-300 dark:hover:text-purple-400"
+                        onClick={() => router.push("/personality/new")}
+                    >
+                        <PlusCircle className="w-4 h-4" />
+                        <span className="pr-2 text-xs">Create personality</span>
+                    </Button>
+                </div>
                 {isLoading &&
                     <div className="flex w-full h-full items-center justify-center mx-auto my-auto">
                         <ClimbingBoxLoader color="#94a3b8" size={20} />
                     </div>
                 }
-                {!isLoading && <div className="flex flex-1 flex-col gap-4 overflow-auto p-4">
-                    <Tabs defaultValue="existing">
-                        <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="existing" className="data-[state=active]:dark:bg-slate-900 data-[state=active]:bg-slate-300 text-indigo-500">Existing Personalities</TabsTrigger>
-                            <TabsTrigger value="create" className="data-[state=active]:dark:bg-slate-900 data-[state=active]:bg-slate-300 text-indigo-500">Create New Personality</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="create">
-                            <NewPersonality userId={userId} />
-                        </TabsContent>
-                        <TabsContent value="existing">
-                            <ExistingPersonalities
-                                personalities={data?.personalities}
-                                userId={userId}
-                            />
-                        </TabsContent>
-                    </Tabs>
-                </div>}
+                {!isLoading && data?.personalities && data?.personalities.length > 0 &&
+                    <div className="flex flex-1 flex-col gap-4 overflow-auto p-4 border rounded-lg">
+                        <div className="flex flex-col w-full h-full overflow-y-auto max-h-[600px]">
+                            <div className="flex flex-col w-full">
+                                {data.personalities.map((personality, i) => {
+                                    return (
+                                        <PersonalityView personality={personality} key={i} userId={userId} />
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                }
+                {!isLoading && (!data?.personalities || data?.personalities.length === 0) &&
+                    <div className="w-full h-full flex flex-1 flex-col items-center justify-center border rounded-lg">
+                        <span className="text-sm dark:text-slate-400 text-slate-500 p-4">
+                            No personalities found
+                        </span>
+                    </div>
+                }
             </DialogContent>
         </Dialog>
     )

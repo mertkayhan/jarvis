@@ -1,11 +1,10 @@
 'use client'
 
 import { useToast } from "@/lib/hooks/use-toast";
-import { InvalidateQueryFilters, useMutation, useQueryClient } from "@tanstack/react-query";
+import { InvalidateQueryFilters, RefetchQueryFilters, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dispatch, SetStateAction, useState } from "react";
 import { createQuestion } from "./question-actions";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
-import { uuidv4 } from "@/lib/utils";
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
 import { IconSpinner } from "../ui/icons";
@@ -25,9 +24,10 @@ export function NewQuestion({ userId, packId, setCurrentFilters, dispatch }: New
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const mutation = useMutation({
-        mutationFn: (questionId: string) => createQuestion(packId, questionId, question, userId),
+        mutationFn: () => createQuestion(packId, question, userId),
         onSuccess: async () => {
             await queryClient.invalidateQueries(["listQuestions", packId, 1] as InvalidateQueryFilters);
+            await queryClient.refetchQueries(["listQuestions", packId, 1] as RefetchQueryFilters);
             toast({ title: "Successfully created new question" });
             setQuestion("");
             setCurrentFilters(null);
@@ -43,8 +43,8 @@ export function NewQuestion({ userId, packId, setCurrentFilters, dispatch }: New
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <Button variant="outline" className="w-5/6">
-                    <svg
+                <Button variant="outline" className="w-5/6" disabled={mutation.isPending}>
+                    {!mutation.isPending && <svg
                         className="w-4 h-4"
                         viewBox="0 0 15 15"
                         strokeWidth={2}
@@ -52,7 +52,8 @@ export function NewQuestion({ userId, packId, setCurrentFilters, dispatch }: New
                         xmlns="http://www.w3.org/2000/svg"
                     >
                         <path d="M8 2.75C8 2.47386 7.77614 2.25 7.5 2.25C7.22386 2.25 7 2.47386 7 2.75V7H2.75C2.47386 7 2.25 7.22386 2.25 7.5C2.25 7.77614 2.47386 8 2.75 8H7V12.25C7 12.5261 7.22386 12.75 7.5 12.75C7.77614 12.75 8 12.5261 8 12.25V8H12.25C12.5261 8 12.75 7.77614 12.75 7.5C12.75 7.22386 12.5261 7 12.25 7H8V2.75Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
-                    </svg>
+                    </svg>}
+                    {mutation.isPending && <IconSpinner className="mr-2 animate-spin" />}
                     <span className="px-2">New Question</span>
                 </Button>
             </DialogTrigger>
@@ -66,8 +67,7 @@ export function NewQuestion({ userId, packId, setCurrentFilters, dispatch }: New
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
-                        const newId = uuidv4();
-                        mutation.mutate(newId);
+                        mutation.mutate();
                     }}
                 >
                     <div className="grid gap-4 py-4">

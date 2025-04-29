@@ -1,8 +1,8 @@
 'use client'
 
-import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { Button } from "../ui/button";
-import { deleteDocument, generateV4ReadSignedUrl, ListDocumentsResp } from "./document-repo-actions";
+import { deleteDocument, ListDocumentsResp } from "./document-repo-actions";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { IconSpinner } from "../ui/icons";
@@ -14,146 +14,90 @@ import { DialogTitle } from "@radix-ui/react-dialog";
 import { useToast } from "@/lib/hooks/use-toast";
 import { uuidv4 } from "@/lib/utils";
 import { ToastAction } from "../ui/toast";
-import { Socket } from "socket.io-client";
+import { useAuthToken } from "@/lib/hooks/use-auth-token";
 
 interface UploadButtonProps {
     uploadRunning: boolean
     userId: string
     setUploadRunning: Dispatch<SetStateAction<boolean>>
-    socket: Socket | null
 }
 
-interface ReadResp {
-    data: string | ArrayBuffer | null
-    fname: string
-}
-
-interface UploadParams {
-    base64Data: string | ArrayBuffer | null
-    fname: string
-}
-
-interface ServerParams {
-    fname: string
-    uploadId: string
-    dismiss: () => void
-}
-
-export function UploadButton({ uploadRunning, userId, setUploadRunning, socket }: UploadButtonProps) {
+export function UploadButton({ uploadRunning, userId, setUploadRunning }: UploadButtonProps) {
     const [chosenFile, setChosenFile] = useState<File | null>(null);
     const [processingMode, setProcessingMode] = useState("accurate");
-    const currentTry = useRef(1);
-    const readFileContent = (file: File): Promise<ReadResp> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve({ data: reader.result, fname: file.name });
-            reader.onerror = () => reject(new Error("Failed to read file content"));
-        });
-    };
     const { toast } = useToast();
     const queryClient = useQueryClient();
-    const readMutation = useMutation({
-        mutationFn: (file: File) => readFileContent(file),
-        onSuccess: (resp: ReadResp) => {
-            uploadMutation.mutate({ base64Data: resp.data, fname: resp.fname });
-        },
-        onError: (error) => {
-            console.error(error);
-            toast({ title: "Upload failed", description: "Failed to read the file", duration: Infinity });
-        }
-    }, queryClient);
+    const token = useAuthToken();
+
     const uploadMutation = useMutation({
-        mutationFn: async ({ base64Data, fname }: UploadParams) => {
+        mutationFn: async (file: File) => {
             const { dismiss } = toast({
                 title: "Processing file...",
                 action: <ToastAction altText="spinner"><IconSpinner className="animate-spin" /></ToastAction>,
                 duration: Infinity
             });
+
+            const formData = new FormData();
             const uploadId = uuidv4();
+            formData.append("fileb", file);
+            formData.append("upload_id", uploadId);
+            formData.append("user_id", userId);
+            formData.append("mode", processingMode);
+            formData.append("module", "document_repo");
+
             const resp = await fetch("/api/upload", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    base64Data,
-                    path: `raw/${userId}/${uploadId}/${fname}`,
-                    uploadId: uploadId,
-                })
+                headers: { "Authorization": `Bearer ${token}` },
+                body: formData
             });
+
             const data = await resp.json();
-            // console.log("upload data", data);
             if (!resp.ok) {
                 throw new Error(`upload failed: ${JSON.stringify(data)}`);
             }
-            return { uploadId, fname, dismiss };
+            return { resp: data, dismiss: dismiss, fname: file.name, uploadId };
         },
-        onSuccess: (resp: ServerParams) => {
-            // console.log("trigger server mutation");
-            serverMutation.mutate(resp);
+        onSuccess: (resp) => {
+            if (resp.resp.success) {
+                resp.dismiss(); // Close the toast
+                toast({ title: "Successfully processed document", duration: 3000 });
+                queryClient.setQueryData(["listDocuments", userId], (old: ListDocumentsResp) => {
+                    return {
+                        docs: [
+                            {
+                                name: resp.fname,
+                                id: resp.uploadId,
+                                owner: userId,
+                                href: resp.resp.url,
+                                createdAt: new Date(),
+                                pageCount: resp.resp.numPages,
+                                tokenCount: resp.resp.numTokens,
+                            },
+                            ...(old?.docs ?? [])
+                        ]
+                    };
+                });
+            } else if (resp.resp.message === "unknown document type") {
+                toast({ title: "Document processing failed", description: "Unknown document type", variant: "destructive", duration: Infinity });
+            } else {
+                resp.dismiss(); // Close the toast
+                toast({ title: "Document processing failed", description: "Internal server error", variant: "destructive", duration: Infinity });
+            }
         },
         onError: (error) => {
             console.error("File upload failed:", error);
             toast({ title: "Processing failed", description: "File upload failed", variant: "destructive", duration: Infinity });
         }
     }, queryClient);
-    const documentProcessingHandler = (dismiss: () => void, fname: string, uploadId: string, mode: string, resolve: () => void, reject: (reason: string) => void) => {
-        socket?.emit("document_upload_complete", { name: fname, user: userId, uploadId, mode: mode }, async (resp: any) => {
-            // console.log("processing complete");
-            if (resp["result"] === `document_done_${fname}_${userId}`) {
-                dismiss(); // Close the toast
-                toast({ title: "Successfully processed document", duration: 5000 });
-                generateV4ReadSignedUrl(`raw/${userId}/${uploadId}/${fname}`).then((href) => {
-                    queryClient.setQueryData(["listDocuments", userId], (old: ListDocumentsResp) => {
-                        return {
-                            docs: [
-                                {
-                                    name: fname,
-                                    id: uploadId,
-                                    owner: userId,
-                                    href: href,
-                                    createdAt: new Date(),
-                                    pageCount: resp["num_pages"],
-                                    tokenCount: resp["num_tokens"],
-                                },
-                                ...(old?.docs ?? [])
-                            ]
-                        };
-                    })
-                }).catch(() => console.error("failed to generate pre-signed url"));
-                resolve(); // Mark mutation as successful
-            } else if (resp["result"] === "unknown document type") {
-                dismiss(); // Close the toast
-                toast({ title: "Document processing failed", description: "Unknown document type", variant: "destructive", duration: Infinity });
-                reject("unknown document type");
-            } else {
-                if (currentTry.current >= 2) {
-                    dismiss(); // Close the toast
-                    toast({ title: "Document processing failed", description: "Internal server error", variant: "destructive", duration: Infinity });
-                    reject("unknown error");
-                } else if (currentTry.current === 1) {
-                    console.error("retrying with fast since accurate failed");
-                    currentTry.current = 2;
-                    documentProcessingHandler(dismiss, fname, uploadId, "fast", resolve, reject);
-                }
-            }
-        });
-    };
-    const serverMutation = useMutation({
-        mutationFn: async ({ fname, uploadId, dismiss }: ServerParams) => {
-            // console.log("sending socket message")
-            return new Promise<void>((resolve, reject) => {
-                documentProcessingHandler(dismiss, fname, uploadId, processingMode, resolve, reject);
-            });
-        },
-    });
+
     const reset = () => {
         setChosenFile(null);
         setProcessingMode("accurate");
-        currentTry.current = 1;
     };
+
     useEffect(() => {
-        setUploadRunning(readMutation.isPending || uploadMutation.isPending || serverMutation.isPending);
-    }, [readMutation.isPending, uploadMutation.isPending, serverMutation.isPending]);
+        setUploadRunning(uploadMutation.isPending);
+    }, [uploadMutation.isPending]);
 
     return (
         <Dialog>
@@ -229,7 +173,7 @@ export function UploadButton({ uploadRunning, userId, setUploadRunning, socket }
                             type="button"
                             onClick={() => {
                                 if (chosenFile) {
-                                    readMutation.mutate(chosenFile);
+                                    uploadMutation.mutate(chosenFile);
                                 }
                             }}>
                             Submit
@@ -239,6 +183,7 @@ export function UploadButton({ uploadRunning, userId, setUploadRunning, socket }
             </DialogContent>
         </Dialog>
     );
+
 }
 
 interface DownloadButtonProps {

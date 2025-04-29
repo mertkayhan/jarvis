@@ -3,18 +3,15 @@
 import Textarea from 'react-textarea-autosize'
 import { useEnterSubmit } from '@/lib/hooks/use-enter-submit'
 import { useState, useRef, Dispatch, SetStateAction, useEffect } from 'react'
-import { PromptTemplate } from '@/lib/prompt-template'
 import Image from 'next/image'
 import { useToast } from '@/lib/hooks/use-toast'
-import { SelfNotes } from './self-notes'
 import { RegenerateResponse } from './regenerate-response'
-import { GenerateFollowUp } from './generate-followup'
 import { DetectHallucination } from './detect-hallucination'
-import { AutoScroll } from './auto-scroll'
 import { SubmitButton } from './submit-button'
 import { UploadMenu } from './upload-menu'
 import { Button } from '../ui/button'
 import { IconClose } from '../ui/icons'
+import { DocumentPack, QuestionPack } from '@/lib/types'
 
 export interface ChatInputProps {
     input: string
@@ -30,12 +27,13 @@ export interface ChatInputProps {
     stop: () => void
     messageCount: number
     hasSystemPrompt: boolean
-    promptTemplate?: PromptTemplate
     autoScroll: boolean
     setAutoScroll: Dispatch<SetStateAction<boolean>>
     detectHallucination: boolean
     setDetectHallucination: Dispatch<SetStateAction<boolean>>
-    userId: string,
+    userId: string
+    setSelectedQuestionPack: Dispatch<SetStateAction<QuestionPack | null>>
+    setSelectedDocumentPack: Dispatch<SetStateAction<DocumentPack | null>>
 }
 
 
@@ -57,15 +55,15 @@ export function ChatInput({
     detectHallucination,
     setDetectHallucination,
     userId,
+    setSelectedQuestionPack,
+    setSelectedDocumentPack
 }: ChatInputProps) {
     const [appendDone, setAppendDone] = useState(true);
     const { formRef, onKeyDown } = useEnterSubmit()
-    const [selectedImagesTmp, setSelectedImagesTmp] = useState<File[]>([])
-    const [selectedPreviewsTmp, setSelectedPreviewsTmp] = useState<string[]>([]);
-    const [isOverlayOpen, setOverlayOpen] = useState(false);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const { toast } = useToast();
     const [additionalDocs, setAdditionalDocs] = useState<string[]>([]);
+    const [isDropdownOpen, setDropdownOpen] = useState(false);
 
     useEffect(() => {
         const totalSize = selectedImages.map((img) => (img.size / (1024 * 1024))).reduce((prevValue, size) => prevValue + Math.min(size, 0.5), 0);
@@ -91,7 +89,7 @@ export function ChatInput({
                     if (!input?.trim()) {
                         return
                     }
-                    if (isOverlayOpen) {
+                    if (isDropdownOpen) {
                         return
                     }
                     // console.log("after overlay open");
@@ -104,16 +102,17 @@ export function ChatInput({
                 <div
                     id="chat-input-form"
                     className={`${messageCount === 0 ? 'dark:bg-slate-900 bg-slate-100' : 'bg-transparent'} md:mb-4 w-full max-w-3xl rounded-lg border bg-background shadow-lg items-center justify-center ${(!appendDone) ? 'pointer-events-none opacity-50' : ''}`}
-                    onFocusCapture={() => {
+                    onFocusCapture={(e) => {
                         setTimeout(() => {
-                            if (!isOverlayOpen && inputRef.current) {
+                            if (inputRef.current && !isDropdownOpen) {
                                 inputRef.current.focus();
                                 // Move cursor to the end of the text
                                 const length = inputRef.current.value.length;
                                 inputRef.current.setSelectionRange(length, length);
                             }
-                        }, 0)
-                    }}>
+                        }, 100);
+                    }}
+                >
                     {(selectedPreviews.length > 0) && <div className='p-2 grid-cols-5 space-2'>
                         {selectedPreviews.map((img, i) => {
                             return (
@@ -158,7 +157,7 @@ export function ChatInput({
                     </div>}
                     {additionalDocs.length > 0 && (
                         <span
-                            className='ml-2 text-xs px-3 py-1 rounded-md bg-gradient-to-r from-indigo-500 to-blue-400 text-white shadow-lg transition-all duration-300 ease-in-out'
+                            className='ml-2 text-xs px-3 py-1 rounded-md bg-gradient-to-r from-purple-400 to-indigo-500 text-white shadow-lg transition-all duration-300 ease-in-out'
                         >
                             <>
                                 {additionalDocs.length} additional document{additionalDocs.length > 1 ? 's' : ''} attached 📄✨
@@ -188,11 +187,11 @@ export function ChatInput({
                             onChange={e => setInput(e.target.value)}
                             placeholder="Enter your prompt"
                             spellCheck={true}
-                            className="bg-transparent resize-none focus-within:outline-none text-xs w-full border-0 px-0 md:text-sm text-slate-900 focus:outline-none dark:text-slate-200 dark:placeholder-slate-400"
+                            className="flex bg-transparent resize-none focus-within:outline-none text-xs w-full border-0 px-0 md:text-sm text-slate-900 focus:outline-none dark:text-slate-200 dark:placeholder-slate-400 overflow-hidden"
                             onPaste={(e) => {
-                                console.log(e);
-                                console.log(e.clipboardData.getData("text"));
-                                console.log(e.clipboardData.files);
+                                // console.log(e);
+                                // console.log(e.clipboardData.getData("text"));
+                                // console.log(e.clipboardData.files);
                                 const validFiles: File[] = [];
                                 const validPreviews: string[] = [];
                                 for (const clipboardItem of e.clipboardData.files) {
@@ -209,26 +208,21 @@ export function ChatInput({
                     <div className="flex items-center justify-between md:p-2">
                         <div className='flex'>
                             <UploadMenu
-                                selectedImagesTmp={selectedImagesTmp}
-                                selectedPreviewsTmp={selectedPreviewsTmp}
                                 setSelectedImages={setSelectedImages}
-                                setOverlayOpen={setOverlayOpen}
-                                setSelectedImagesTmp={setSelectedImagesTmp}
                                 setSelectedPreviews={setSelectedPreviews}
-                                setSelectedPreviewsTmp={setSelectedPreviewsTmp}
                                 selectedDocuments={additionalDocs}
                                 setSelectedDocuments={setAdditionalDocs}
                                 userId={userId}
-                                inputRef={inputRef}
                                 messagesLength={messageCount}
+                                isDropdownOpen={isDropdownOpen}
+                                setDropdownOpen={setDropdownOpen}
+                                setSelectedQuestionPack={setSelectedQuestionPack}
+                                setSelectedDocumentPack={setSelectedDocumentPack}
                             />
-                            <SelfNotes input={input} setInput={setInput} />
                             <RegenerateResponse reload={reload} messageCount={messageCount} />
-                            {/* <GenerateFollowUp generateFollowUp={generateFollowUp} messageCount={messageCount} /> */}
                         </div>
                         <div className='flex justify-end items-center gap-2 w-full'>
                             <DetectHallucination detectHallucination={detectHallucination} setDetectHallucination={setDetectHallucination} />
-                            {/* <AutoScroll autoScroll={autoScroll} setAutoScroll={setAutoScroll} /> */}
                             <SubmitButton isLoading={isLoading} input={input} stop={stop} />
                         </div>
                     </div>

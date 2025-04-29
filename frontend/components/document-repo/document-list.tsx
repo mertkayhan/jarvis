@@ -12,11 +12,11 @@ interface DocumentListProps {
 export function DocumentList({ documents, userId }: DocumentListProps) {
     return (
         <TooltipProvider>
-            <div className="border rounded-md h-[60vh] overflow-auto  pt-2">
+            <div className="border rounded-md h-full overflow-auto pt-2">
                 {documents && documents.length > 0 ? (
                     <ul className="divide-y divide-gray-200 dark:divide-gray-700">
                         {documents.map((doc) => (
-                            <div className="flex w-full flex-col dark:hover:bg-gray-800 hover:bg-gray-100 space-y-1" key={doc.id}>
+                            <div className="flex w-full flex-col dark:hover:bg-gray-800 hover:bg-gray-100 space-y-1 py-2" key={doc.id}>
                                 <li
                                     className="flex justify-between items-center px-4"
                                 >
@@ -26,11 +26,11 @@ export function DocumentList({ documents, userId }: DocumentListProps) {
                                         >
                                             {doc.name}
                                         </p>
-                                        <span className="text-xs dark:text-slate-500 text-slate-400">
+                                        <span className="hidden lg:flex text-xs dark:text-slate-500 text-slate-400 overflow-hidden text-nowrap">
                                             {`Date: ${doc.createdAt.toDateString()} | Pages: ${doc.pageCount} | Tokens: ${doc.tokenCount}`}
                                         </span>
                                     </div>
-                                    <div className="flex items-center justify-center pt-1">
+                                    <div className="flex items-center justify-center">
                                         <DownloadButton href={doc.href} />
                                         <DeleteButton id={doc.id} userId={userId} />
                                     </div>

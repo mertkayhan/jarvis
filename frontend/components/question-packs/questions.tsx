@@ -37,13 +37,14 @@ export function Questions({
     const [searchQuery, setSearchQuery] = useState<string | null>(null);
     const { data, isLoading, error, refetch } = useQuery({
         queryKey: ["listQuestions", packId, page, currentFilters, searchQuery],
-        queryFn: () => listQuestions(packId, page - 1, currentFilters, searchQuery),
-        enabled: !!packId && !!page,
+        queryFn: () => listQuestions(userId, packId, page - 1, currentFilters, searchQuery),
+        enabled: !!packId && !!page && !!userId,
     });
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const updateAnswer = async (answer: string, id: string) => {
         await queryClient.setQueryData(["listQuestions", packId, page, currentFilters, searchQuery], (old: ListQuestionsResp) => {
+            // console.log(old);
             return { maxPageNo: old.maxPageNo, questions: old.questions.map((q) => (q.id === id) ? { ...q, answer: answer } : q) };
         });
     };

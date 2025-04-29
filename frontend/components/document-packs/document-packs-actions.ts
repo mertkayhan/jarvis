@@ -7,6 +7,25 @@ import postgres from "postgres";
 const uri = process.env.DB_URI || "unknown";
 const sql = postgres(uri, { connection: { application_name: "Jarvis" } });
 
+export async function getPack(id: string, userId: string) {
+    const getPack = sql`
+        SELECT 
+            id, 
+            name, 
+            description
+        FROM common.document_packs
+        WHERE deleted = false AND id = ${id}
+    `;
+
+    try {
+        const res = await getPack;
+        return res[0] as DocumentPack;
+    } catch (err) {
+        console.error(err);
+        throw err;
+    }
+}
+
 export interface ListDocumentPacksResp {
     packs: DocumentPack[]
 }

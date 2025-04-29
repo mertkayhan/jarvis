@@ -1,6 +1,6 @@
 'use server'
 
-import { Message } from "@/lib/types";
+import { Message, Personality } from "@/lib/types";
 import postgres from "postgres";
 
 const uri = process.env.DB_URI || "unknown";
@@ -37,6 +37,20 @@ export async function getToken() {
         console.error('Error in getToken:', error);
         throw error;
     }
+}
+
+export async function getDefaultSystemPrompt(userId: string) {
+    const backendUrl = process.env.BACKEND_URL;
+    const token = await getToken();
+    const resp = await fetch(
+        `${backendUrl}/api/v1/users/${userId}/default-prompt`,
+        {
+            method: "GET",
+            headers: { "Authorization": `Bearer ${token}` }
+        }
+    );
+    const data = await resp.json();
+    return data as Personality;
 }
 
 export async function getWSUrl() {

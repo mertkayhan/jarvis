@@ -2,7 +2,9 @@ import json
 import os
 from typing import Dict, List, Optional, Sequence, Set
 import logging
+from uuid import uuid4
 import gcsfs
+from psycopg import AsyncConnection
 from psycopg.rows import dict_row
 from jarvis.db.db import get_connection_pool
 from dotenv import load_dotenv
@@ -328,3 +330,33 @@ async def get_doc_tokens(doc_ids: List[str]):
             res = await resp.fetchall()
 
     return res[0]["total"]
+
+
+async def register_transaction(
+    conn: AsyncConnection,
+    operation: str,
+    prev_value: str,
+    current_value: str,
+    user_id: str,
+    question_id: str,
+):
+    query = """
+        INSERT INTO common.question_history (
+            id, operation, prev_value, current_value, user_id, question_id
+        ) VALUES (
+            %(id)s, %(operation)s, %(prev_value)s, %(current_value)s, %(user_id)s, %(question_id)s
+        )
+    """
+
+    async with conn.cursor(row_factory=dict_row) as cur:
+        await cur.execute(
+            query,
+            {
+                "id": str(uuid4()),
+                "operation": operation,
+                "prev_value": prev_value,
+                "current_value": current_value,
+                "user_id": user_id,
+                "question_id": question_id,
+            },
+        )

@@ -3,7 +3,7 @@
 import { Sidebar } from "@/components/sidebar/chat-sidebar"
 import { useEffect } from "react"
 import { Questions } from "@/components/question-packs/questions"
-import { redirect, useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { useToast } from "@/lib/hooks/use-toast"
 import { useUser } from '@auth0/nextjs-auth0/client';
 import Loading from "@/app/loading"
@@ -15,9 +15,11 @@ export default function Page() {
     const { user, error, isLoading } = useUser();
 
     useEffect(() => {
+        // TODO: when page no is missing
         const pageNo = searchParams?.get("page");
         const packId = searchParams?.get("pack_id");
-        console.log("page no", pageNo)
+        // console.log("page no", pageNo);
+        // console.log("pack id", packId);
         if (pageNo && Number(pageNo) > 0) {
             router.replace(`?pack_id=${packId}&page=${pageNo}`)
         } else if (pageNo && Number(pageNo) <= 0) {
@@ -52,9 +54,6 @@ export default function Page() {
                         showChatList={false}
                         moduleName="jarvis"
                         userId={user?.email as string}
-                        showDocumentRepo={false}
-                        showModelSelection={false}
-                        showPersonalities={false}
                     />
                 </div>
             </div>

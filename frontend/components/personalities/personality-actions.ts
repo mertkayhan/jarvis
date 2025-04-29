@@ -2,9 +2,53 @@
 
 import { Personality } from "@/lib/types";
 import postgres from "postgres";
+import { getToken } from "../chat/chat-actions";
 
 const uri = process.env.DB_URI || "unknown";
 const sql = postgres(uri, { connection: { application_name: "Jarvis" } });
+
+export async function getPersonality(id: string, userId: string) {
+    const getPersonality = sql`
+    SELECT 
+        id,
+        description,
+        instructions,
+        name,
+        owner,
+        tools,
+        doc_ids
+    FROM common.personalities
+    WHERE deleted = false AND owner IN ('system', ${userId}) AND id = ${id}
+    `;
+    const getDefaultPersonality = sql`
+    SELECT 
+        user_id,
+        personality_id
+    FROM common.default_personalities 
+    WHERE user_id = ${userId}
+    `
+    try {
+        const [personality, defaultPersonality] = await Promise.all([getPersonality, getDefaultPersonality]);
+        return { ...personality[0], isDefault: (defaultPersonality.length) ? personality[0].id === defaultPersonality[0]["personality_id"] : false } as Personality
+    } catch (error) {
+        console.error("failed to fetch personality", error);
+        throw error;
+    }
+}
+
+export async function getAvailableTools(userId: string) {
+    const backendUrl = process.env.BACKEND_URL;
+    const token = await getToken();
+    const resp = await fetch(
+        `${backendUrl}/api/v1/users/${userId}/tools`,
+        {
+            method: "GET",
+            headers: { "Authorization": `Bearer ${token}` }
+        }
+    );
+    const data = await resp.json();
+    return { tools: data.tools };
+}
 
 export interface ListPersonalitiesResp {
     personalities: Personality[] | null
@@ -20,11 +64,8 @@ async function listPersonalitiesHandler(userId: string) {
     SELECT 
         id,
         description,
-        instructions,
         name,
-        owner,
-        tools,
-        doc_ids
+        owner
     FROM common.personalities
     WHERE deleted = false AND owner IN ('system', ${userId})
     ORDER BY updated_at DESC
@@ -110,17 +151,17 @@ async function deletePersonalityHandler(id: string) {
 
 interface UpdatePersonalityResp { }
 
-export async function updatePersonality(id: string, name: string, description: string, instructions: string, tools: string[], docs: string[]) {
-    console.log("update personality", id, name, description, instructions, tools, docs);
-    return await updatePersonalityHandler(id, name, description, instructions, tools, docs);
+export async function updatePersonality(id: string, name: string, description: string, instructions: string, tools: string[], docs: string[], owner: string) {
+    console.log("update personality", id, name, description, instructions, tools, docs, owner);
+    return await updatePersonalityHandler(id, name, description, instructions, tools, docs, owner);
 }
 
-async function updatePersonalityHandler(id: string, name: string, description: string, instructions: string, tools: string[], docs: string[]) {
+async function updatePersonalityHandler(id: string, name: string, description: string, instructions: string, tools: string[], docs: string[], owner: string) {
     try {
         const res = await sql.begin((sql) => [
             sql`
             UPDATE common.personalities
-            SET name = ${name}, instructions = ${instructions}, description = ${description}, tools = ${tools}, doc_ids = ${docs}
+            SET name = ${name}, instructions = ${instructions}, description = ${description}, tools = ${tools}, doc_ids = ${docs}, owner = ${owner}
             WHERE id = ${id}
             RETURNING id
             `
@@ -143,13 +184,6 @@ export async function makePersonalityGlobal(id: string) {
 }
 
 async function makePersonalityGlobalHandler(id: string) {
-    const makeGlobal = `
-        mutation MakeGlobal($id: uuid!) {
-            update_common_personalities_by_pk(pk_columns: {id: $id}, _set: {owner: "system"}) {
-                id
-            }
-        }
-    `;
     try {
         const res = await sql.begin((sql) => [
             sql`

@@ -1,13 +1,8 @@
-// import React, { ChangeEvent, Fragment, useCallback, useRef, useState } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import MenuButton from "../MenuButton";
 import { useEditorState } from "@tiptap/react";
 import { useTiptapContext } from "../Provider";
-// import Dialog from "@/components/TiptapEditor/components/ui/Dialog";
-// import MediaLibrary from "@/components/MediaLibrary";
-// import useModal from "@/components/TiptapEditor/hooks/useModal";
 import { UploadDialog } from "@/components/chat/upload-dialog";
-import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import Button from "../ui/Button";
 
 const ImageButton = () => {
@@ -41,47 +36,39 @@ const ImageButton = () => {
   // const { open, handleOpen, handleClose } = useModal();
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [selectedPreviews, setSelectedPreviews] = useState<string[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (selectedImages.length === 0) {
+      return;
+    }
+    const files = Promise.all(selectedImages.map(async (img) => {
+      const file = await readFileAsync(img);
+      return { type: "image", attrs: { src: file } };
+      // console.log("url:", file);
+      // editor.commands.setImage({
+      //   src: file as string,
+      // });
+    }));
+    files.then((f) => {
+      console.log("f:", f);
+      editor.commands.insertContent(f);
+      // editor.commands.createParagraphNear()
+      editor.chain().focus().createParagraphNear().run();
+    })
+    setSelectedImages([]);
+    setSelectedPreviews([]);
+  }, [selectedImages]);
 
   return (
     <>
-      <Dialog>
-        <DialogTrigger asChild>
-          <MenuButton icon="Image" tooltip="Image" {...state} />
-        </DialogTrigger>
-        <DialogContent className="flex flex-col w-full h-80 items-center justify-center">
-          <UploadDialog selectedBlobs={selectedImages} setSelectedBlobs={setSelectedImages} imagePreviews={selectedPreviews} setImagePreviews={setSelectedPreviews} />
-          <DialogFooter>
-            <DialogClose>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  console.log("click")
-
-                  const files = Promise.all(selectedImages.map(async (img) => {
-                    const file = await readFileAsync(img);
-                    return { type: "image", attrs: { src: file } };
-                    // console.log("url:", file);
-                    // editor.commands.setImage({
-                    //   src: file as string,
-                    // });
-                  }));
-                  files.then((f) => {
-                    console.log("f:", f);
-                    editor.commands.insertContent(f);
-                    // editor.commands.createParagraphNear()
-                    editor.chain().focus().createParagraphNear().run();
-                  })
-                  setSelectedImages([]);
-                  setSelectedPreviews([]);
-                }}
-              >
-                Save Changes
-              </Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <UploadDialog
+        setSelectedImages={setSelectedImages}
+        setSelectedPreviews={setSelectedPreviews}
+        ref={inputRef}
+      >
+        <MenuButton icon="Image" tooltip="Image" {...state} onClick={() => inputRef.current?.click()} />
+      </UploadDialog>
     </>
   );
 };

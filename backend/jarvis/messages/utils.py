@@ -42,5 +42,5 @@ def build_user_message(data: Mapping) -> List[Dict[str, Any]]:
     return messages
 
 
-def skip_message(msg: str) -> bool:
-    return "@self" in msg
+# def skip_message(msg: str) -> bool:
+#     return "@self" in msg

@@ -1,6 +1,10 @@
 from typing import Any, Dict, List
 from jarvis.db.db import get_connection_pool
 from psycopg.rows import dict_row
+from langchain_openai import OpenAIEmbeddings
+
+
+embedding = OpenAIEmbeddings(model="text-embedding-3-small")
 
 
 async def retrieve(
@@ -51,3 +55,10 @@ async def retrieve(
             )
             res = await resp.fetchall()
             return res
+
+
+async def generate_embedding(query: str) -> str:
+    res = (
+        "[" + ",".join(map(lambda x: str(x), await embedding.aembed_query(query))) + "]"
+    )
+    return res

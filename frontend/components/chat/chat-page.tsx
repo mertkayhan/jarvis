@@ -6,19 +6,17 @@ import { Dispatch, Reducer, useEffect, useReducer, useState } from 'react';
 import { Chat } from '@/components/chat/chat'
 import { Sidebar } from '@/components/sidebar/chat-sidebar';
 import { ChatHistoryList } from '../chat-sidebar/chat-history-list';
-import { PromptTemplate } from '@/lib/prompt-template';
 import { Personality } from '@/lib/types';
-import { defaultSystemPrompt } from '@/lib/prompt-template';
 import { getDefaultPersonality } from '@/components/personalities/personality-actions';
 import { useQuery } from '@tanstack/react-query';
 import { Socket } from 'socket.io-client';
 import { chatGeneratingReducer } from './chat-reducers';
+import { getDefaultSystemPrompt } from './chat-actions';
 
 interface ChatPageProps {
     path: string
     greeting: string
     moduleName: string
-    promptTemplate?: PromptTemplate
     title: string
     socket: Socket | null
     id: string
@@ -34,11 +32,19 @@ function useDefaultPersonality(userId: string) {
     return data?.personality;
 }
 
+function useDefaultSystemPrompt(userId: string | null | undefined) {
+    const { data, isLoading } = useQuery({
+        queryKey: ["systemPrompt", userId],
+        enabled: !!userId,
+        queryFn: () => getDefaultSystemPrompt(userId as string)
+    });
+    return { defaultSystemPrompt: data, promptLoading: isLoading };
+}
+
 export default function ChatPage({
     path,
     greeting,
     moduleName,
-    promptTemplate,
     title,
     socket,
     id,
@@ -47,7 +53,8 @@ export default function ChatPage({
     const { user, error, isLoading } = useUser();
     const [showChatList, setShowChatList] = useState(true);
     const defaultPersonality = useDefaultPersonality(user?.email as string);
-    const [selectedPersonality, setSelectedPersonality] = useState<Personality>(defaultSystemPrompt);
+    const { defaultSystemPrompt, promptLoading } = useDefaultSystemPrompt(user?.email);
+    const [selectedPersonality, setSelectedPersonality] = useState<Personality | undefined>(defaultSystemPrompt);
     const [loadedChatHistory, setLoadedChatHistory] = useState(false);
     const [chatGenerating, chatGeneratingDispatch] = useReducer<Reducer<Record<string, boolean>, any>>(chatGeneratingReducer, {});
 
@@ -60,7 +67,7 @@ export default function ChatPage({
         }
     }, [defaultPersonality]);
 
-    if (isLoading) {
+    if (isLoading || promptLoading) {
         return (
             <>
                 <title>Loading...</title>
@@ -104,7 +111,7 @@ export default function ChatPage({
                                 path={path}
                                 greeting={greeting}
                                 hasSystemPrompt
-                                promptTemplate={promptTemplate}
+                                defaultSystemPrompt={defaultSystemPrompt}
                                 selectedPersonality={selectedPersonality}
                                 setSelectedPersonality={setSelectedPersonality}
                                 socket={socket}

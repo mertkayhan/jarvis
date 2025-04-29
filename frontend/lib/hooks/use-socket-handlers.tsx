@@ -6,7 +6,6 @@ import { useChatTitle } from "./use-chat-title";
 import { useDefaultPersonality } from "./use-default-personality";
 import { useMessageHistory } from "./use-message-history";
 import { useQueryClient } from "@tanstack/react-query";
-import { defaultSystemPrompt } from "../prompt-template";
 import { ListChatsResp } from "@/components/chat-sidebar/chat-sidebar-actions";
 
 export function useSocketHandlers(
@@ -16,7 +15,8 @@ export function useSocketHandlers(
     userId: string,
     setMessages: Dispatch<SetStateAction<Message[]>>,
     setCurrentContext: Dispatch<SetStateAction<string | undefined | null>>,
-    setSelectedPersonality: Dispatch<SetStateAction<Personality>>,
+    defaultSystemPrompt: Personality | undefined,
+    setSelectedPersonality: Dispatch<SetStateAction<Personality | undefined>>,
     dispatch: Dispatch<any>,
     setSelectedDocuments: Dispatch<SetStateAction<string[]>>,
     setSelectedQuestionPack: Dispatch<SetStateAction<QuestionPack | null>>,

@@ -12,6 +12,11 @@ SUPPORTED_MODELS = (
         # "o1-mini": {},
         "o3-mini": {"reasoning_effort": "medium"},
         "gpt-4.5-preview": {"temperature": 0},
+        "o4-mini": {"reasoning_effort": "medium"},
+        "o3": {"reasoning_effort": "medium"},
+        "gpt-4.1": {"temperature": 0},
+        "gpt-4.1-mini": {"temperature": 0},
+        "gpt-4.1-nano": {"temperature": 0},
     }
     if os.getenv("OPENAI_API_KEY")
     else {}
