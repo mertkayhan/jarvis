@@ -1,9 +1,14 @@
 # Jarvis: AI-Powered Personal Assistant
 
-This is a project I'm building to learn more about AI agents and chatbot development. The frontend is built using Next.js and Shadcn components. The backend uses Python, FastAPI, Socket.io and Langgraph.
+Jarvis is an AI-powered conversational assistant designed for seamless knowledge access and automation. This project aims to provide an intuitive system that can be used by anyone with minimal training or onboarding.
 
-My primary design goal is to build an intuitive system that can be used by anybody without much training/onboarding.
+## Overview
 
+- Frontend: Built with Next.js and Shadcn components for a responsive and modern user interface.
+
+- Backend: Utilizes Python, FastAPI, Socket.io, and LangGraph to handle AI interactions and real-time communication.
+
+- Infrastructure requirements: Running Postgres instance, a Cloud Storage bucket
 
 ## Quick Start
 
