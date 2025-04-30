@@ -26,6 +26,10 @@ The chat functionality supports OpenAI, Google and Antrophic models for a seamle
 
 On the right hand side, you can also see the so called "Context Explorer" which provides refereces to the knowledge pieces the AI agent has used to come up with its answer.
 
+### Personalities
+
+Personalities allow users to create custom AI agents with tailored instructions, default internal knowledge and tool access.
+
 ### Knowledge
 
 #### Document Repository
