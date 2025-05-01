@@ -24,12 +24,12 @@ interface ChatPageProps {
 }
 
 function useDefaultPersonality(userId: string) {
-    const { data } = useQuery({
+    const { data, isLoading } = useQuery({
         queryKey: ["getDefaultPersonality", userId],
         queryFn: () => getDefaultPersonality(userId as string),
         enabled: !!userId
     });
-    return data?.personality;
+    return { defaultPersonality: data?.personality, defaultPersonalityLoading: isLoading };
 }
 
 function useDefaultSystemPrompt(userId: string | null | undefined) {
@@ -52,22 +52,24 @@ export default function ChatPage({
 }: ChatPageProps) {
     const { user, error, isLoading } = useUser();
     const [showChatList, setShowChatList] = useState(true);
-    const defaultPersonality = useDefaultPersonality(user?.email as string);
+    const { defaultPersonality, defaultPersonalityLoading } = useDefaultPersonality(user?.email as string);
     const { defaultSystemPrompt, promptLoading } = useDefaultSystemPrompt(user?.email);
-    const [selectedPersonality, setSelectedPersonality] = useState<Personality | undefined>(defaultSystemPrompt);
+    const [selectedPersonality, setSelectedPersonality] = useState<Personality | undefined>(undefined);
     const [loadedChatHistory, setLoadedChatHistory] = useState(false);
     const [chatGenerating, chatGeneratingDispatch] = useReducer<Reducer<Record<string, boolean>, any>>(chatGeneratingReducer, {});
 
     useEffect(() => {
         if (defaultPersonality) {
-            setSelectedPersonality((old) => (old === defaultSystemPrompt) ? defaultPersonality : old);
+            setSelectedPersonality((old) => (old !== defaultSystemPrompt) ? defaultPersonality : old);
+        } else if (defaultSystemPrompt) {
+            setSelectedPersonality((old) => (old !== defaultSystemPrompt) ? defaultSystemPrompt : old);
         }
         return () => {
             setLoadedChatHistory(false);
         }
-    }, [defaultPersonality]);
+    }, [defaultPersonality, defaultSystemPrompt]);
 
-    if (isLoading || promptLoading) {
+    if (isLoading || promptLoading || defaultPersonalityLoading) {
         return (
             <>
                 <title>Loading...</title>
