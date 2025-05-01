@@ -1,6 +1,7 @@
 'use client'
 
 import Loading from "@/app/loading";
+import { getWSUrl } from "@/components/chat/chat-actions";
 import { MemoizedReactMarkdown } from "@/components/chat/markdown";
 import { getWorkflowStatus, listDocuments } from "@/components/document-packs/document-packs-actions";
 import { Sidebar } from "@/components/sidebar/chat-sidebar";
@@ -53,6 +54,18 @@ function useUserHook() {
     return { user, userLoading: isLoading, userError: error };
 }
 
+function useBackendUrl() {
+    const [url, setUrl] = useState("");
+    useEffect(() => {
+        const getUrl = async () => {
+            const backendUrl = await getWSUrl();
+            setUrl(backendUrl);
+        }
+        getUrl();
+    }, []);
+    return url;
+}
+
 export default function Page() {
     const { user, userLoading, userError } = useUserHook();
     const params = useSearchParams();
@@ -83,6 +96,7 @@ export default function Page() {
     };
     const queryClient = useQueryClient();
     const router = useRouter();
+    const backendUrl = useBackendUrl();
     const handleUpload = async (files: FileList | null) => {
         if (!files) {
             return;
@@ -99,11 +113,11 @@ export default function Page() {
             const uploadId = uuidv4();
             formData.append("fileb", files[i]);
             formData.append("upload_id", uploadId);
-            formData.append("user_id", user?.email as string);
+            // formData.append("user_id", user?.email as string);
             formData.append("mode", "fast");
             formData.append("module", "document_pack");
             formData.append("pack_id", params.get("pack_id") as string);
-            const resp = await fetch("/api/upload", {
+            const resp = await fetch(`${backendUrl}/api/v1/users/${user?.email}/uploads/document`, {
                 method: "POST",
                 headers: { "Authorization": `Bearer ${token}` },
                 body: formData

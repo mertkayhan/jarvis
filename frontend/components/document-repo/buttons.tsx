@@ -15,11 +15,24 @@ import { useToast } from "@/lib/hooks/use-toast";
 import { uuidv4 } from "@/lib/utils";
 import { ToastAction } from "../ui/toast";
 import { useAuthToken } from "@/lib/hooks/use-auth-token";
+import { getWSUrl } from "../chat/chat-actions";
 
 interface UploadButtonProps {
     uploadRunning: boolean
     userId: string
     setUploadRunning: Dispatch<SetStateAction<boolean>>
+}
+
+function useBackendUrl() {
+    const [url, setUrl] = useState("");
+    useEffect(() => {
+        const getUrl = async () => {
+            const backendUrl = await getWSUrl();
+            setUrl(backendUrl);
+        }
+        getUrl();
+    }, []);
+    return url;
 }
 
 export function UploadButton({ uploadRunning, userId, setUploadRunning }: UploadButtonProps) {
@@ -28,6 +41,7 @@ export function UploadButton({ uploadRunning, userId, setUploadRunning }: Upload
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const token = useAuthToken();
+    const backendUrl = useBackendUrl();
 
     const uploadMutation = useMutation({
         mutationFn: async (file: File) => {
@@ -41,11 +55,11 @@ export function UploadButton({ uploadRunning, userId, setUploadRunning }: Upload
             const uploadId = uuidv4();
             formData.append("fileb", file);
             formData.append("upload_id", uploadId);
-            formData.append("user_id", userId);
+            // formData.append("user_id", userId);
             formData.append("mode", processingMode);
             formData.append("module", "document_repo");
 
-            const resp = await fetch("/api/upload", {
+            const resp = await fetch(`${backendUrl}/api/v1/users/${userId}/uploads/document`, {
                 method: "POST",
                 headers: { "Authorization": `Bearer ${token}` },
                 body: formData
