@@ -213,7 +213,7 @@ export function SettingsDialog({ userId }: { userId: string }) {
                             </SidebarGroup>
                         </SidebarContent>
                     </Sidebar>
-                    <main className="flex h-[480px] flex-1 flex-col overflow-hidden p-4">
+                    <main className="flex flex-1 flex-col overflow-hidden p-4">
                         <BuildDialogContent
                             selection={selection}
                             userId={userId}

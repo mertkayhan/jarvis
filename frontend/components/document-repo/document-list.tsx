@@ -12,7 +12,7 @@ interface DocumentListProps {
 export function DocumentList({ documents, userId }: DocumentListProps) {
     return (
         <TooltipProvider>
-            <div className="border rounded-md h-full overflow-auto pt-2">
+            <div className="flex flex-col border rounded-md h-full overflow-auto">
                 {documents && documents.length > 0 ? (
                     <ul className="divide-y divide-gray-200 dark:divide-gray-700">
                         {documents.map((doc) => (

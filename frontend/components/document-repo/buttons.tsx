@@ -84,8 +84,8 @@ export function UploadButton({ uploadRunning, userId, setUploadRunning }: Upload
                                 owner: userId,
                                 href: resp.resp.url,
                                 createdAt: new Date(),
-                                pageCount: resp.resp.numPages,
-                                tokenCount: resp.resp.numTokens,
+                                pageCount: resp.resp["num_pages"],
+                                tokenCount: resp.resp["num_tokens"],
                             },
                             ...(old?.docs ?? [])
                         ]
