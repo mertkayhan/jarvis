@@ -55,7 +55,7 @@ async function getUserModelHandler(userId: string) {
 }
 
 interface SetUserModelResp {
-    error: string
+    modelName: string
 }
 
 export async function setUserModel(userId: string, modelName: string) {
@@ -88,10 +88,10 @@ async function setUserModelHandler(userId: string, modelName: string) {
             RETURNING user_id, model_name
             `
         ]);
-        console.log("res:", res);
-        return {} as SetUserModelResp;
+        // console.log("res:", res);
+        return { modelName: modelName } as SetUserModelResp;
     } catch (error) {
         console.error(error);
-        return { error: "failed to set user model" } as SetUserModelResp;
+        throw error;
     }
 }

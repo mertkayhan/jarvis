@@ -35,9 +35,10 @@ export function ModelSelection({ userId }: ModelSelectionProps) {
     const queryClient = useQueryClient();
     const mutation = useMutation({
         mutationFn: (modelName: string) => setUserModel(userId, modelName),
-        onSuccess: async () => {
-            await queryClient.invalidateQueries(["getUserModel", userId] as InvalidateQueryFilters);
-            await queryClient.refetchQueries(["getUserModel", userId] as RefetchQueryFilters);
+        onSuccess: async (resp) => {
+            await queryClient.setQueryData(["getUserModel", userId], () => {
+                return { modelName: resp.modelName };
+            });
         },
         onError: (error) => {
             console.error("Error updating model:", error);
