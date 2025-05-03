@@ -19,7 +19,7 @@ You can use [this](https://auth0.com/docs/quickstart/backend/python/01-authoriza
 
 ### LLM Related
 
-- GOOGLE_APPLICATION_CREDENTIALS: Create a service account with Storage Bucket Viewer, Storage Object User, Vertex AI User permissions and download the JSON key and pass the path to the key.
+- GOOGLE_APPLICATION_CREDENTIALS: Create a service account with ```Storage Bucket Viewer```, ```Storage Object User```, ```Vertex AI User```, ```Service Account Token Creator``` permissions and download the JSON key and pass the path to the key.
 - OPENAI_API_KEY: Can be created in OpenAI console
 - ANTHROPIC_API_KEY: Optional, can be created in Antophic console
 
