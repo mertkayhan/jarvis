@@ -3,6 +3,7 @@
 import { File, FolderSearch2, HelpCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Dispatch, ReactNode, SetStateAction, useState } from "react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 interface KnowledgeDropdownProps {
     setKind: Dispatch<SetStateAction<string>>
@@ -10,9 +11,10 @@ interface KnowledgeDropdownProps {
     triggerButton: ReactNode
     dropdownOpen?: boolean
     setDropdownOpen?: Dispatch<SetStateAction<boolean>>
+    tooltipContent?: string
 }
 
-export function KnowledgeDropdown({ setKind, setOpen, triggerButton, dropdownOpen, setDropdownOpen }: KnowledgeDropdownProps) {
+export function KnowledgeDropdown({ setKind, setOpen, triggerButton, dropdownOpen, setDropdownOpen, tooltipContent }: KnowledgeDropdownProps) {
     const [internalDropdownOpen, internalSetDropdownOpen] = useState(false);
 
     return (
@@ -21,9 +23,14 @@ export function KnowledgeDropdown({ setKind, setOpen, triggerButton, dropdownOpe
             open={(dropdownOpen) ? dropdownOpen : internalDropdownOpen}
             onOpenChange={(open) => (setDropdownOpen) ? setDropdownOpen(open) : internalSetDropdownOpen(open)}
         >
-            <DropdownMenuTrigger asChild>
-                {triggerButton}
-            </DropdownMenuTrigger>
+            <Tooltip>
+                <DropdownMenuTrigger asChild>
+                    <TooltipTrigger asChild>
+                        {triggerButton}
+                    </TooltipTrigger>
+                </DropdownMenuTrigger>
+                {tooltipContent && <TooltipContent>{tooltipContent}</TooltipContent>}
+            </Tooltip>
             <DropdownMenuContent side='top'>
                 <DropdownMenuItem onSelect={() => {
                     setKind("Documents");
