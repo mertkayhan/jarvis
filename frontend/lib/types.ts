@@ -18,6 +18,7 @@ export interface UserChat extends Record<string, any> {
     path: string
     messages: Message[]
     updatedAt: Date
+    sharePath?: string
 }
 
 export interface Question extends Record<string, any> {
