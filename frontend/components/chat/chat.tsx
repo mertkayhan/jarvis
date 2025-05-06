@@ -14,7 +14,6 @@ import { ChatWindow } from './chat-window';
 import { appendFn, cancelFn, generateFollowUpFn, reloadFn } from './chat-functions';
 import { useNetworkStatus } from '@/lib/hooks/use-network-status';
 import { useSocketHandlers } from '@/lib/hooks/use-socket-handlers';
-import { HashLoader } from 'react-spinners';
 import { motion } from "framer-motion";
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
@@ -153,13 +152,7 @@ export function Chat({
                                 <span className='text-xs text-slate-500'>Offline</span>
                             }
                         </div>
-                    </div>
-                    {(!socket?.connected) &&
-                        <div className='flex w-full h-full mx-auto my-auto items-center justify-center'>
-                            <HashLoader color="#94a3b8" />
-                        </div>
-                    }
-                    {socket?.connected &&
+                    </div>                    
                         <>
                             <motion.div
                                 initial={{ opacity: 0 }}
@@ -284,7 +277,6 @@ export function Chat({
                                 }
                             </motion.div>
                         </>
-                    }
                 </>
             </ResizablePanel>
             <ResizableHandle withHandle />

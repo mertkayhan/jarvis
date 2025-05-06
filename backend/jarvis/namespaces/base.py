@@ -173,7 +173,7 @@ class Base(socketio.AsyncNamespace, ABC):
         finally:
             return await self.emit(
                 "server_message",
-                {"content": "<done>", "data": json.dumps({"chat_id": chat_id})},
+                {"content": "<done>", "chatId": chat_id},
                 room=chat_id,
                 namespace=self.namespace,
             )

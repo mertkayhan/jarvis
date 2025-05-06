@@ -1,13 +1,13 @@
 export interface Message extends Record<string, any> {
-    id: string;
-    createdAt?: Date;
-    content: string;
-    ui?: string | JSX.Element | JSX.Element[] | null | undefined;
-    role: 'user' | 'assistant';
-    data?: string;
-    liked?: boolean;
-    score?: number;
-    context?: string;
+    id: string
+    chatId: string
+    createdAt?: Date
+    content: string
+    role: 'user' | 'assistant' | 'system'
+    data?: string
+    liked?: boolean
+    score?: number
+    context?: string
 }
 
 export interface UserChat extends Record<string, any> {
@@ -17,16 +17,9 @@ export interface UserChat extends Record<string, any> {
     userId: string
     path: string
     messages: Message[]
-    sharePath?: string
     updatedAt: Date
+    sharePath?: string
 }
-
-export type ServerActionResult<Result> = Promise<
-    | Result
-    | {
-        error: string
-    }
->
 
 export interface Question extends Record<string, any> {
     id: string

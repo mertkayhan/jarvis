@@ -32,7 +32,7 @@ export function RegenerateResponse({ messageCount, reload }: RegenerateResponseP
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <p className='text-sm'>Regenerate response</p>
+                    Regenerate response
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>

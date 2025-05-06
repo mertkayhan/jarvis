@@ -46,6 +46,7 @@ export function UploadMenu({
                         setOpen={setOpen}
                         dropdownOpen={isDropdownOpen}
                         setDropdownOpen={setDropdownOpen}
+                        tooltipContent="Attach knowledge"
                         triggerButton={
                             // <Tooltip>
                             //     <TooltipTrigger asChild>

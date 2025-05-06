@@ -10,7 +10,7 @@ import { Button } from "../ui/button";
 import { ClearHistory } from "@/components/chat-sidebar/clear-history";
 import { ChatListItem } from "./chat-list-item";
 import { motion } from 'framer-motion';
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/lib/hooks/use-toast";
 
 interface ChatListProps {
@@ -37,7 +37,6 @@ export function ChatHistoryList({
         enabled: !!userId,
     });
     const { toast } = useToast();
-    const queryClient = useQueryClient();
 
     useEffect(() => {
         if (error) {
@@ -75,7 +74,7 @@ export function ChatHistoryList({
             <div className="p-4">
                 <SearchBox setQuery={setQuery} />
             </div>
-            <div className="mx-2 space-y-4 flex-1 overflow-hidden hover:overflow-y-auto w-24 md:w-[95%]">
+            <div className="mx-2 space-y-1 flex-1 overflow-hidden hover:overflow-y-auto w-24 md:w-[95%]">
                 {filteredChats.length ? (
                     filteredChats.map((chat, i) => {
                         return (
