@@ -11,7 +11,8 @@ def new_server_message(chat_id: str, user_id: str) -> Message:
         id=str(uuid4()),
         createdAt=datetime.now().isoformat(),
         content="",
-        data=json.dumps({"chat_id": chat_id, "user_id": user_id}),
+        chatId=chat_id,
+        userId=user_id,
     )
 
 
