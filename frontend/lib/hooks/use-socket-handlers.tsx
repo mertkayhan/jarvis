@@ -94,7 +94,7 @@ export function useSocketHandlers(
             setSelectedQuestionPack(null);
             setSelectedDocumentPack(null);
         }
-    }, [id, socket]);
+    }, [id]); //socket
 
     useEffect(() => {
         if (!socket) {
@@ -176,7 +176,7 @@ export function useSocketHandlers(
             if (resp.chatId !== id) {
                 return;
             }
-            
+
             setCurrentContext((resp as Message)?.context)
             setMessages((currentMessages) => {
                 // we must have at least one message to receive a response on it
