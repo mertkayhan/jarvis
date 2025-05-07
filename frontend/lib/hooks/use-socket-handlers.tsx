@@ -94,7 +94,7 @@ export function useSocketHandlers(
             setSelectedQuestionPack(null);
             setSelectedDocumentPack(null);
         }
-    }, [id]); //socket
+    }, [id, socket]);
 
     useEffect(() => {
         if (!socket) {
