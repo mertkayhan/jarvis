@@ -5,6 +5,7 @@ from langchain.tools import Tool
 from typing import (
     Annotated,
     Any,
+    Awaitable,
     Callable,
     Dict,
     List,
@@ -32,17 +33,18 @@ class AgentState(TypedDict):
 
 
 async def tool_call_handler(
-    fun: Callable[[Any], Union[Dict | str]], context: Dict[str, Any], model: str
-) -> Union[ToolMessage, List[BaseMessage]]:
+    fun: Callable[[Any], Awaitable[Union[Dict[str, Any] ,str]]], context: Dict[str, Any], model: str
+) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
     res = await fun(context["args"])
     if not isinstance(res, (str, dict)):
         raise TypeError("Expected str or list result from tool")
     if isinstance(res, str):
-        return ToolMessage(
-            content=res,
-            tool_call_id=context["id"],
-            name=context["name"],
-        )
+        return {
+            "role": "tool",
+            "content": res, 
+            "tool_call_id": context["id"],
+            "name": context["name"],
+        }
 
     if model == "antrophic":
         res["role"] = "tool"
@@ -83,12 +85,13 @@ async def tool_node(
 ) -> Dict[str, List[ToolMessage]]:
 
     # print("tool calls:", state["messages"][-1].tool_calls)
-    outputs: List[Union[ToolMessage, List[BaseMessage]]] = await asyncio.gather(
+    tool_calls = [] if not hasattr(state["messages"][-1], "tool_calls") else state["messages"][-1].tool_calls  # type: ignore
+    outputs = await asyncio.gather(
         *[
             tool_call_handler(
                 tools_by_name[tool_call["name"]].ainvoke, tool_call, model
             )
-            for tool_call in state["messages"][-1].tool_calls
+            for tool_call in tool_calls
         ],
     )
 
@@ -99,16 +102,16 @@ async def tool_node(
         # we need to group user messages into one
         user_message_content = []
         for msg in flat_outputs:
-            if msg["role"] == "user":
+            if isinstance(msg, dict) and msg.get("role") == "user":
                 user_message_content.extend(msg["content"])
         if len(user_message_content) > 0:
-            tool_messages = [msg for msg in flat_outputs if msg["role"] == "tool"]
+            tool_messages = [msg for msg in flat_outputs if isinstance(msg, dict) and msg.get("role") == "tool"]
             flat_outputs = tool_messages + [
                 {"role": "user", "content": user_message_content}
             ]
 
     # print("outputs:", flat_outputs)
-    return {"messages": flat_outputs}
+    return {"messages": flat_outputs}  # type: ignore
 
 
 # Define the node that calls the model
@@ -132,7 +135,7 @@ def should_continue(state: AgentState) -> Literal["end"] | Literal["continue"]:
     messages = state["messages"]
     last_message = messages[-1]
     # If there is no function call, then we finish
-    if not last_message.tool_calls:
+    if not last_message.tool_calls:  # type: ignore
         return "end"
     # Otherwise if there is, we continue
     else:
@@ -151,7 +154,7 @@ def build_react_chatbot(
     else:
         raise TypeError("Unsupported LLM type")
 
-    llm = llm.bind_tools(tools)
+    llm = llm.bind_tools(tools)  # type: ignore
     tools_by_name = {tool.name: tool for tool in tools}
 
     async def tool_node_partial(state: AgentState) -> Dict[str, List]:
