@@ -18,9 +18,16 @@ from psycopg import AsyncConnection
 from pydantic import BaseModel
 from jarvis.auth.auth import validate_token
 from jarvis.blob_storage.storage import resolve_storage
+from jarvis.chat.chat_title import create_chat_title
 from jarvis.db.db import get_connection_pool
 from jarvis.document_parsers.parser import resolve_parser
-from jarvis.queries.query_handlers import insert_doc
+from jarvis.models.models import model_factory
+from jarvis.queries.query_handlers import (
+    get_chat_model,
+    get_message_history,
+    insert_doc,
+    update_chat_title,
+)
 from jarvis.question_pack.retriever import generate_embedding
 from jarvis.tools import ALL_AVAILABLE_TOOLS
 from models import ALL_SUPPORTED_MODELS
@@ -144,6 +151,31 @@ async def get_default_system_prompt(user_id: str) -> SystemPrompt:
     )
 
 
+class AutoGenChatTitle(BaseModel):
+    title: str
+
+
+@app.patch(
+    "/api/v1/users/{user_id}/chats/{chat_id}/title/autogen",
+    response_model=AutoGenChatTitle,
+)
+async def generate_chat_title(user_id: str, chat_id: str) -> AutoGenChatTitle:
+    try:
+        [chat_model, history] = await asyncio.gather(
+            get_chat_model(chat_id), get_message_history(chat_id)
+        )
+        model = model_factory(chat_model, 0)  # type: ignore
+        title = await create_chat_title(model, history)
+        await update_chat_title(chat_id, title)
+        return AutoGenChatTitle(title=title)
+    except Exception as err:
+        logger.error(f"failed to create chat title: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Title generation failed, please refer to the server logs for more information.",
+        )
+
+
 @app.get(
     "/api/v1/users/{user_id}/models",
     response_model=UserModels,
@@ -199,13 +231,9 @@ async def upload_document(
     try:
         storage = resolve_storage()
         if module == "document_repo":
-            target_path = (
-                f"raw/{user_id}/{upload_id}/{fileb.filename}"
-            )
+            target_path = f"raw/{user_id}/{upload_id}/{fileb.filename}"
         elif module == "document_pack" and pack_id is not None:
-            target_path = (
-                f"document_packs/{pack_id}/raw/{fileb.filename}"
-            )
+            target_path = f"document_packs/{pack_id}/raw/{fileb.filename}"
         else:
             raise ValueError("unknown module")
         storage.write(fileb.file, target_path)
@@ -533,15 +561,6 @@ async def get_question_pack_questions(
 #     pass
 
 
-# class ChatTitleUpdate(BaseModel):
-#     new_title: str
-
-
-# @app.patch("/api/v1/users/{user_id}/chats/{chat_id}/title")
-# async def update_chat_title(user_id: str, chat_id: str, payload: ChatTitleUpdate):
-#     pass
-
-
 # @app.delete("/api/v1/users/{user_id}/chats/{chat_id}")
 # async def delete_chat(user_id: str, chat_id: str):
 #     pass
@@ -761,4 +780,12 @@ async def get_question_pack_questions(
 #     "/api/v1/users/{user_id}/question-packs/{question_pack_id}/questions/{question_id}/history"
 # )
 # async def get_question_history(user_id: str, question_pack_id: str, question_id: str):
+#     pass
+
+# class ChatTitleUpdate(BaseModel):
+#     new_title: str
+
+
+# @app.patch("/api/v1/users/{user_id}/chats/{chat_id}/title")
+# async def update_chat_title(user_id: str, chat_id: str, payload: ChatTitleUpdate):
 #     pass

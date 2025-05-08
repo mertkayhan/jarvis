@@ -6,11 +6,10 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGro
 import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
 import { Button } from "../ui/button";
 import { DialogTrigger } from "../ui/dialog";
-import { IconEdit, IconShare, IconTrash } from "../ui/icons";
-import { InvalidateQueryFilters, RefetchQueryFilters, useQueryClient } from "@tanstack/react-query";
-import { useSocket } from "@/lib/hooks/use-socket";
-import { useAuthToken } from "@/lib/hooks/use-auth-token";
+import { IconEdit, IconShare, IconSpinner, IconTrash } from "../ui/icons";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/lib/hooks/use-toast";
+import { autogenChatTitle, ListChatsResp } from "./chat-sidebar-actions";
 
 interface ChatDropdownProps {
     setCurrentDialog: Dispatch<SetStateAction<string>>
@@ -21,23 +20,41 @@ interface ChatDropdownProps {
 export function ChatDropdown({ setCurrentDialog, chat, userId }: ChatDropdownProps) {
     const { toast } = useToast();
     const queryClient = useQueryClient();
-    const token = useAuthToken();
-    const socket = useSocket({ socketNamespace: "jarvis", userId, token });
+    const autogenChatTitleMutation = useMutation({
+        mutationFn: () => autogenChatTitle(userId, chat.id),
+        onSuccess: async (resp) => {
+            await queryClient.setQueryData(["listChats", userId], (old: ListChatsResp) => {
+                return { chats: old?.chats.map((c) => (c.id === chat.id) ? { ...c, title: resp.title } : c) };
+            })
+        },
+        onError: (error) => {
+            console.error(error);
+            toast({ title: "Failed to generate chat title", variant: "destructive" });
+        } 
+    }, queryClient);
 
     return (
         <DropdownMenu modal={false}>
             <Tooltip>
                 <DropdownMenuTrigger asChild>
                     <TooltipTrigger asChild>
-                        <Button variant="ghost" className="size-6 p-0 hover:bg-background">
-                            <svg
-                                className="h-4 w-4"
-                                viewBox="0 0 15 15"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
-                                <path d="M3.625 7.5C3.625 8.12132 3.12132 8.625 2.5 8.625C1.87868 8.625 1.375 8.12132 1.375 7.5C1.375 6.87868 1.87868 6.375 2.5 6.375C3.12132 6.375 3.625 6.87868 3.625 7.5ZM8.625 7.5C8.625 8.12132 8.12132 8.625 7.5 8.625C6.87868 8.625 6.375 8.12132 6.375 7.5C6.375 6.87868 6.87868 6.375 7.5 6.375C8.12132 6.375 8.625 6.87868 8.625 7.5ZM12.5 8.625C13.1213 8.625 13.625 8.12132 13.625 7.5C13.625 6.87868 13.1213 6.375 12.5 6.375C11.8787 6.375 11.375 6.87868 11.375 7.5C11.375 8.12132 11.8787 8.625 12.5 8.625Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
-                            </svg>
+                        <Button 
+                            variant="ghost" 
+                            className="size-6 p-0 hover:bg-background"
+                            disabled={autogenChatTitleMutation.isPending}
+                        >
+                            {!autogenChatTitleMutation.isPending && 
+                                <svg
+                                    className="h-4 w-4"
+                                    viewBox="0 0 15 15"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                >
+                                    <path d="M3.625 7.5C3.625 8.12132 3.12132 8.625 2.5 8.625C1.87868 8.625 1.375 8.12132 1.375 7.5C1.375 6.87868 1.87868 6.375 2.5 6.375C3.12132 6.375 3.625 6.87868 3.625 7.5ZM8.625 7.5C8.625 8.12132 8.12132 8.625 7.5 8.625C6.87868 8.625 6.375 8.12132 6.375 7.5C6.375 6.87868 6.87868 6.375 7.5 6.375C8.12132 6.375 8.625 6.87868 8.625 7.5ZM12.5 8.625C13.1213 8.625 13.625 8.12132 13.625 7.5C13.625 6.87868 13.1213 6.375 12.5 6.375C11.8787 6.375 11.375 6.87868 11.375 7.5C11.375 8.12132 11.8787 8.625 12.5 8.625Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
+                                </svg>
+                                || 
+                                <IconSpinner className="animate-spin" />
+                            }
                         </Button>
                     </TooltipTrigger>
                 </DropdownMenuTrigger>
@@ -46,17 +63,10 @@ export function ChatDropdown({ setCurrentDialog, chat, userId }: ChatDropdownPro
             <DropdownMenuContent className="flex flex-col" side="right">
                 <DropdownMenuGroup>
                     <DialogTrigger asChild>
-                        <DropdownMenuItem onClick={(e) => {
+                        <DropdownMenuItem onClick={async (e) => {
                             e.stopPropagation();
                             setCurrentDialog("");
-                            socket?.emit("generate_chat_title", { "chat_id": chat.id }, async (ok: boolean) => {
-                                if (ok) {
-                                    await queryClient.invalidateQueries(["listChats", userId] as InvalidateQueryFilters);
-                                    await queryClient.refetchQueries(["listChats", userId] as RefetchQueryFilters);
-                                } else {
-                                    toast({ title: "Failed to generate chat title", variant: "destructive" });
-                                }
-                            });
+                            autogenChatTitleMutation.mutate();
                         }}>
                             <svg
                                 className="w-4 h-4"

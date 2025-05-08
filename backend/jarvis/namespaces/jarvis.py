@@ -39,6 +39,7 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+
 class Jarvis(Base):
     async def on_join_pack_room(self, sid, data):
         logger.info(f"{sid} requesting to join room for pack {data['room_id']}")
@@ -175,20 +176,6 @@ class Jarvis(Base):
     async def on_join_chat_room(self, sid, data):
         logger.info(f"{sid} requesting to join chat room {data['room_id']}")
         await self._room_resolver(sid, data["room_id"])
-
-    async def on_generate_chat_title(self, sid, data):
-        try:
-            chat_id = data.get("chat_id")
-            [chat_model, history] = await asyncio.gather(
-                get_chat_model(chat_id), get_message_history(chat_id)
-            )
-            model = model_factory(chat_model, 0)  # type: ignore
-            title = await create_chat_title(model, history)
-            await update_chat_title(chat_id, title)
-            return True
-        except Exception as err:
-            logger.error(f"failed to create chat title: {err}", exc_info=True)
-            return False
 
     async def _create_chat(self, chat_id, user_id, sid):
         await create_chat(chat_id, user_id)

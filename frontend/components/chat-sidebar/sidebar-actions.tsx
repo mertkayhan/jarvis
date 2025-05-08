@@ -1,7 +1,7 @@
 'use client'
 
 import { UserChat } from "@/lib/types";
-import { Dispatch, MutableRefObject, useState } from "react";
+import { Dispatch, useState } from "react";
 import { TooltipProvider } from "../ui/tooltip";
 import { Dialog } from "../ui/dialog";
 import { RenameDialog } from "./rename-dialog";
@@ -26,6 +26,7 @@ export function SidebarActions({
 }: SidebarActionsProps) {
     const [title, setTitle] = useState("");
     const [currentDialog, setCurrentDialog] = useState("");
+    const [open, setOpen] = useState(false);
 
     const shareChat = (id: string) => {
         return { sharePath: `${path}/shared/${btoa(chat.userId)}/${id}` } as UserChat
@@ -34,12 +35,11 @@ export function SidebarActions({
     const dialogHandler = (currentDialog: string) => {
         switch (currentDialog) {
             case "rename":
-                return <RenameDialog setTitle={setTitle} title={title} chat={chat} />
+                return <RenameDialog setTitle={setTitle} title={title} chat={chat} setOpen={setOpen} />
             case "share":
                 return <ChatShareDialog
                     chat={chat}
                     shareChat={shareChat}
-                    onCopy={() => { }}
                 />
             case "delete":
                 return <DeleteChatDialog chatId={chat.id} userId={userId} dispatch={dispatch} />
@@ -49,7 +49,7 @@ export function SidebarActions({
     return (
         <>
             <TooltipProvider>
-                <Dialog>
+                <Dialog open={open} onOpenChange={(open) => setOpen(open)}>
                     <ChatDropdown setCurrentDialog={setCurrentDialog} chat={chat} userId={userId} />
                     {dialogHandler(currentDialog)}
                 </Dialog>
