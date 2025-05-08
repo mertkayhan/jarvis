@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import json
 import os
-from typing import Annotated, Any, Dict, Optional
+from typing import Annotated, Any, Dict, List, Optional
 from uuid import UUID, uuid4
 from fastapi import (
     Depends,
@@ -173,6 +173,156 @@ async def generate_chat_title(user_id: str, chat_id: str) -> AutoGenChatTitle:
         raise HTTPException(
             status_code=500,
             detail="Title generation failed, please refer to the server logs for more information.",
+        )
+
+
+class UserChat(BaseModel):
+    id: UUID
+    owner_email: str
+    title: str
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+
+
+class UserChats(BaseModel):
+    chats: List[UserChat]
+
+
+@app.get("/api/v1/users/{user_id}/chats")
+async def get_all_user_chats(user_id: str, deleted: bool = False):
+    query = """
+        SELECT 
+            id,
+            owner_email,
+            title,
+            created_at, 
+            updated_at
+        FROM common.chat_history 
+        WHERE owner_email = %(user_id)s AND deleted = %(deleted)s
+        ORDER BY updated_at DESC
+    """
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                resp = await cur.execute(
+                    query,
+                    {
+                        "user_id": user_id,
+                        "deleted": deleted,
+                    },
+                )
+                res = await resp.fetchall()
+                return UserChats(chats=[UserChat(**r) for r in res])
+    except Exception as err:
+        logger.error(f"failed to fetch user chats: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to fetch user chats, please refer to server logs for more information",
+        )
+
+
+class DeletedChats(BaseModel):
+    id: List[str]
+
+
+@app.delete("/api/v1/users/{user_id}/chats")
+async def delete_all_user_chats(user_id: str):
+    query = """
+        UPDATE common.chat_history 
+        SET deleted = true 
+        WHERE owner_email = (%s)
+        RETURNING id
+    """
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.transaction():
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    resp = await cur.execute(query, (user_id,))
+                    res = await resp.fetchall()
+                    return DeletedChats(id=[r["id"] for r in res])
+    except Exception as err:
+        logger.error(f"failed to delete user chats: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to delete user chats, please refer to server logs for more details",
+        )
+
+
+class DeleteChatResult(BaseModel):
+    id: UUID
+
+
+@app.delete("/api/v1/users/{user_id}/chats/{chat_id}", response_model=DeleteChatResult)
+async def delete_chat(user_id: str, chat_id: str) -> DeleteChatResult:
+    query = """
+        UPDATE common.chat_history 
+        SET deleted = true 
+        WHERE id = (%s)
+        RETURNING id
+    """
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.transaction():
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    resp = await cur.execute(query, (chat_id,))
+                    res = await resp.fetchall()
+                    return DeleteChatResult(id=res[0]["id"])
+    except Exception as err:
+        logger.error(f"failed to delete chat: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to delete chat, please refer to server logs for more details",
+        )
+
+
+class ChatTitleUpdate(BaseModel):
+    new_title: str
+
+
+class ChatTitleUpdateResult(BaseModel):
+    title: str
+    chat_id: UUID
+
+
+@app.patch(
+    "/api/v1/users/{user_id}/chats/{chat_id}/title",
+    response_model=ChatTitleUpdateResult,
+)
+async def update_user_chat_title(
+    user_id: str, chat_id: str, payload: ChatTitleUpdate
+) -> ChatTitleUpdateResult:
+    query = """
+        UPDATE common.chat_history
+        SET title = %(new_title)s
+        WHERE id = %(chat_id)s
+        RETURNING id, title
+    """
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.transaction():
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    resp = await cur.execute(
+                        query,
+                        {
+                            "new_title": payload.new_title,
+                            "chat_id": chat_id,
+                        },
+                    )
+                    res = await resp.fetchall()
+                    return ChatTitleUpdateResult(
+                        chat_id=res[0]["id"],
+                        title=res[0]["title"],
+                    )
+
+    except Exception as err:
+        logger.error(f"failed to update chat title: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to update chat title, please refer to server logs for more details",
         )
 
 
@@ -556,16 +706,6 @@ async def get_question_pack_questions(
 #     pass
 
 
-# @app.delete("/api/v1/users/{user_id}/chats")
-# async def delete_all_user_chats(user_id: str):
-#     pass
-
-
-# @app.delete("/api/v1/users/{user_id}/chats/{chat_id}")
-# async def delete_chat(user_id: str, chat_id: str):
-#     pass
-
-
 # @app.get("/api/v1/users/{user_id}/docs")
 # async def get_user_docs(user_id: str, deleted: bool = False):
 #     pass
@@ -780,12 +920,4 @@ async def get_question_pack_questions(
 #     "/api/v1/users/{user_id}/question-packs/{question_pack_id}/questions/{question_id}/history"
 # )
 # async def get_question_history(user_id: str, question_pack_id: str, question_id: str):
-#     pass
-
-# class ChatTitleUpdate(BaseModel):
-#     new_title: str
-
-
-# @app.patch("/api/v1/users/{user_id}/chats/{chat_id}/title")
-# async def update_chat_title(user_id: str, chat_id: str, payload: ChatTitleUpdate):
 #     pass
