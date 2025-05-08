@@ -7,22 +7,20 @@ from uuid import UUID, uuid4
 from fastapi import (
     Depends,
     FastAPI,
-    File,
-    UploadFile,
     Form,
     Request,
     HTTPException,
     Query,
+    UploadFile,
 )
 from fastapi.security import HTTPBearer
-import gcsfs
 from psycopg import AsyncConnection
 from pydantic import BaseModel
 from jarvis.auth.auth import validate_token
-from jarvis.blob_storage.storage import generate_download_signed_url_v4
+from jarvis.blob_storage.storage import resolve_storage
 from jarvis.db.db import get_connection_pool
 from jarvis.document_parsers.parser import resolve_parser
-from jarvis.queries.query_handlers import insert_doc, register_transaction
+from jarvis.queries.query_handlers import insert_doc
 from jarvis.question_pack.retriever import generate_embedding
 from jarvis.tools import ALL_AVAILABLE_TOOLS
 from models import ALL_SUPPORTED_MODELS
@@ -84,11 +82,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-GOOGLE_PROJECT = os.getenv("GOOGLE_PROJECT")
-assert GOOGLE_PROJECT, "'GOOGLE_PROJECT' is not set!"
-DOCUMENT_BUCKET = os.getenv("DOCUMENT_BUCKET")
-assert DOCUMENT_BUCKET, "'DOCUMENT_BUCKET' is not set!"
 
 
 class AIModel(BaseModel):
@@ -187,7 +180,7 @@ class UploadResult(BaseModel):
 )
 async def upload_document(
     user_id: str,
-    fileb: Annotated[UploadFile, File()],
+    fileb: UploadFile,
     upload_id: Annotated[str, Form()],
     mode: Annotated[str, Form()],
     module: Annotated[str, Form()],
@@ -204,19 +197,18 @@ async def upload_document(
     logger.info(f"received document {fileb.filename} for user {user_id}")
 
     try:
+        storage = resolve_storage()
         if module == "document_repo":
             target_path = (
-                f"{DOCUMENT_BUCKET}/raw/{user_id}/{upload_id}/{fileb.filename}"
+                f"raw/{user_id}/{upload_id}/{fileb.filename}"
             )
         elif module == "document_pack" and pack_id is not None:
             target_path = (
-                f"{DOCUMENT_BUCKET}/document_packs/{pack_id}/raw/{fileb.filename}"
+                f"document_packs/{pack_id}/raw/{fileb.filename}"
             )
         else:
             raise ValueError("unknown module")
-        fs = gcsfs.GCSFileSystem(project=GOOGLE_PROJECT)  # type: ignore
-        with fs.open(target_path, "wb") as f:
-            f.write(fileb.file.read())  # type: ignore
+        storage.write(fileb.file, target_path)
     except Exception as err:
         logger.error(f"raw document upload failed: {err}", exc_info=True)
         return UploadResult(success=False, message="document upload failed")
@@ -227,7 +219,7 @@ async def upload_document(
     # .csv,.txt,.pdf,.xlsx supported
     try:
         parsers = resolve_parser(fileb.filename)  # TODO:
-        source_path = f"{DOCUMENT_BUCKET}/raw/{user_id}/{upload_id}/{fileb.filename}"
+        source_path = f"raw/{user_id}/{upload_id}/{fileb.filename}"
         target_path = source_path.replace("raw", "parsed") + ".md"
         processing_mode = mode
         idx = next(i for i, v in enumerate(parsers) if v.kind == processing_mode)
@@ -249,9 +241,7 @@ async def upload_document(
             message=f"document_done_{fileb.filename}_{user_id}",
             num_pages=res["num_pages"],
             num_tokens=res["num_tokens"],
-            url=generate_download_signed_url_v4(
-                GOOGLE_PROJECT,  # type: ignore
-                DOCUMENT_BUCKET,  # type: ignore
+            url=storage.generate_presigned_url(
                 f"raw/{user_id}/{upload_id}/{fileb.filename}",
             ),
         )

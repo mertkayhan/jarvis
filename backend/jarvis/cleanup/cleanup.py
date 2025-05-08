@@ -1,10 +1,9 @@
 import asyncio
 import logging
 from typing import List
-import gcsfs
+from jarvis.blob_storage.storage import resolve_storage
 from jarvis.db.db import get_connection_pool
 from psycopg.rows import dict_row, DictRow
-from os import getenv
 from dotenv import load_dotenv
 from pathlib import Path
 import shutil
@@ -12,12 +11,6 @@ import shutil
 
 logger = logging.getLogger(__name__)
 load_dotenv()
-
-DOCUMENT_BUCKET = getenv("DOCUMENT_BUCKET")
-assert DOCUMENT_BUCKET, "DOCUMENT_BUCKET is not set!"
-
-GOOGLE_PROJECT = getenv("GOOGLE_PROJECT")
-assert GOOGLE_PROJECT, "GOOGLE_PROJECT is not set!"
 
 
 async def run_cleanup():
@@ -56,15 +49,11 @@ async def clean_old_docs():
 
     logger.info("cleaning up old docs")
     res = await executor(query)
-    fs = gcsfs.GCSFileSystem(project=GOOGLE_PROJECT, cache_timeout=0)  # type: ignore
+    storage = resolve_storage()
     for r in res:
         logger.info(f"deleting {r['document_name']}")
-        fs.rm_file(
-            f"{DOCUMENT_BUCKET}/raw/{r['owner']}/{r['document_id']}/{r['document_name']}"
-        )
-        fs.rm_file(
-            f"{DOCUMENT_BUCKET}/parsed/{r['owner']}/{r['document_id']}/{r['document_name']}.md"
-        )
+        storage.delete(f"raw/{r['owner']}/{r['document_id']}/{r['document_name']}")
+        storage.delete(f"parsed/{r['owner']}/{r['document_id']}/{r['document_name']}.md")
 
 
 async def clean_old_personalities():

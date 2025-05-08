@@ -3,22 +3,14 @@ import os
 from typing import Dict, List, Optional, Sequence, Set
 import logging
 from uuid import uuid4
-import gcsfs
 from psycopg import AsyncConnection
 from psycopg.rows import dict_row
+from jarvis.blob_storage.storage import resolve_storage
 from jarvis.db.db import get_connection_pool
 from dotenv import load_dotenv
 
-from jarvis.document_parsers.gemini import GOOGLE_PROJECT
-
 logger = logging.getLogger(__name__)
 load_dotenv()
-
-DOCUMENT_BUCKET = os.getenv("DOCUMENT_BUCKET")
-assert DOCUMENT_BUCKET, "DOCUMENT_BUCKET is not set!"
-
-GOOGLE_PROJECT = os.getenv("GOOGLE_PROJECT")
-assert GOOGLE_PROJECT, "GOOGLE_PROJECT is not set!"
 
 
 async def create_chat(chat_id: str, owner_id: str):
@@ -91,21 +83,17 @@ async def read_docs(ids: Sequence[str]) -> str:
             resp = await cur.execute(query, (list(ids),))
             res = await resp.fetchall()
 
-    fs = gcsfs.GCSFileSystem(project=GOOGLE_PROJECT, cache_timeout=0)  # type: ignore
+    storage= resolve_storage()
     out = []
 
     for doc in res:
-        with fs.open(
-            f"{DOCUMENT_BUCKET}/parsed/{doc['owner']}/{doc['document_id']}/{doc['document_name']}.md",
-            "rb",
-        ) as f:
-            raw_content: bytes = f.read()  # type: ignore
-            try:
-                content = raw_content.decode("utf-8")
-            except UnicodeDecodeError:
-                content = raw_content.decode("windows-1252")  # Handle non-UTF-8 files
+        raw_content = storage.read(f"parsed/{doc['owner']}/{doc['document_id']}/{doc['document_name']}.md")
+        try:
+            content = raw_content.decode("utf-8")
+        except UnicodeDecodeError:
+            content = raw_content.decode("windows-1252")  # Handle non-UTF-8 files
 
-            out.append(f"# Document Name: {doc['document_name']}\n\n{content}")
+        out.append(f"# Document Name: {doc['document_name']}\n\n{content}")
 
     return "\n\n".join(out)
 

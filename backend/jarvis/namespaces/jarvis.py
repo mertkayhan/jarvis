@@ -38,9 +38,6 @@ from jarvis.models.models import model_factory
 load_dotenv()
 
 logger = logging.getLogger(__name__)
-DOCUMENT_BUCKET = os.getenv("DOCUMENT_BUCKET")
-assert DOCUMENT_BUCKET, "DOCUMENT_BUCKET is not set!"
-
 
 class Jarvis(Base):
     async def on_join_pack_room(self, sid, data):
@@ -118,14 +115,6 @@ class Jarvis(Base):
 
         # persist user message
         await create_message(data, chat_id)
-        # if skip_message(data["content"]):
-        #     logger.info("message for @self skipping...")
-        #     return await self.emit(
-        #         "server_message",
-        #         {"content": "<done>", "data": json.dumps({"chat_id": chat_id})},
-        #         room=chat_id,
-        #         namespace=self.namespace,
-        #     )
 
         # start AI message generation
         chat_model: Optional[str] = await get_chat_model(chat_id)

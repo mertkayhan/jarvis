@@ -1,10 +1,8 @@
 import { getToken } from "@/components/chat/chat-actions";
 import { useEffect, useRef, useState } from "react";
-import { useToast } from "./use-toast";
 
 export function useAuthToken() {
     const [token, setToken] = useState<string | null>(null);
-    const { toast } = useToast();
     const isMounted = useRef(true);
 
     async function fetchToken() {
@@ -14,7 +12,6 @@ export function useAuthToken() {
             setToken((old) => (old !== newToken) ? newToken : old);
         } catch (error) {
             console.error("failed to fetch token", error);
-            toast({ title: "Internal error", description: "Failed to fetch bearer token", variant: "destructive", duration: Infinity });
         }
 
     }
