@@ -1,24 +1,16 @@
 import asyncio
 import logging
-import os
 from pathlib import Path
-import shutil
 from typing import AsyncGenerator, TypedDict
 import pandas as pd
-from jarvis.blob_storage.storage import cleanup_blob_storage, must_list
-from jarvis.document_parsers.gemini import GOOGLE_PROJECT, gemini_pdf_processor
+from jarvis.blob_storage import resolve_storage
+from jarvis.document_parsers.gemini import gemini_pdf_processor
 from jarvis.document_parsers.type import ProcessingResult
 from jarvis.graphrag.graphrag import index_documents
 from jarvis.graphrag.preprocess import preprocess_docs
 from jarvis.queries.query_handlers import insert_doc_into_pack
 
 logger = logging.getLogger(__name__)
-
-DOCUMENT_BUCKET = os.getenv("DOCUMENT_BUCKET")
-assert DOCUMENT_BUCKET, "DOCUMENT_BUCKET is not set!"
-
-GOOGLE_PROJECT = os.getenv("GOOGLE_PROJECT")
-assert GOOGLE_PROJECT, "GOOGLE_PROJECT is not set!"
 
 
 class StepResult(TypedDict):
@@ -47,15 +39,13 @@ async def _parse_docs(data):
     try:
         source_path = f"document_packs/{data['pack_id']}/raw"
         logger.info(f"parsing docs: {source_path}...")
-        blobs = await must_list(
-            GOOGLE_PROJECT, DOCUMENT_BUCKET, source_path  # type: ignore
-        )
-        doc_paths = [f"{DOCUMENT_BUCKET}/{blob}" for blob in blobs]
+        storage = resolve_storage()
+        doc_paths = [blob.name for blob in storage.list(source_path)]
         logger.info(f"found docs: {doc_paths}")
 
         futures = []
         for source_path in doc_paths:
-            target_path = source_path.replace("/raw/", "/parsed/")
+            target_path = source_path.replace("raw/", "parsed/")
             # gemini processor scales better
             futures.append(
                 gemini_pdf_processor(
@@ -82,15 +72,13 @@ async def _preprocess_docs(data):
     try:
         source_path = f"document_packs/{data['pack_id']}/parsed"
         logger.info(f"preprocessing docs: {source_path}...")
-        blobs = await must_list(
-            GOOGLE_PROJECT, DOCUMENT_BUCKET, source_path  # type: ignore
-        )
-        doc_paths = [f"{DOCUMENT_BUCKET}/{blob}" for blob in blobs]
+        storage = resolve_storage()
+        doc_paths = [blob.name for blob in storage.list(source_path)]
         logger.info(f"found docs: {doc_paths}")
 
         futures = []
         for source_path in doc_paths:
-            target_path = source_path.replace("/parsed/", "/preprocessed/")
+            target_path = source_path.replace("parsed/", "preprocessed/")
             futures.append(preprocess_docs(source_path, target_path))
 
         await asyncio.gather(*futures)
@@ -106,7 +94,7 @@ async def _index_docs(data):
     # TODO: consider incremental updates
     try:
         logger.info(f"indexing docs with pack id: {data['pack_id']}...")
-        await index_documents(data["pack_id"], DOCUMENT_BUCKET)  # type: ignore
+        await index_documents(data["pack_id"])  # type: ignore
         logger.info("indexing done")
         logger.info("inserting docs into db")
         root = Path(f"/tmp/jarvis/{data['pack_id']}")

@@ -1,5 +1,7 @@
+import io
 import gcsfs
 from os import getenv
+from jarvis.blob_storage import resolve_storage
 from jarvis.document_parsers.type import ProcessingResult
 from jarvis.document_parsers.utils import count_tokens
 from dotenv import load_dotenv
@@ -11,12 +13,10 @@ assert GOOGLE_PROJECT, "GOOGLE_PROJECT is not set!"
 
 
 def process_txt(src_path: str, target_path: str) -> ProcessingResult:
-    fs = gcsfs.GCSFileSystem(project=GOOGLE_PROJECT, cache_timeout=0)  # type: ignore
-
-    with fs.open(src_path, "rb") as f:
-        raw_content: bytes = f.read()  # type: ignore
-    with fs.open(target_path, "wb") as f:
-        f.write(raw_content)  # type: ignore
+    storage = resolve_storage()
+    raw_content = storage.read(src_path)
+    buf = io.BytesIO(raw_content)
+    storage.write(buf, target_path)
 
     try:
         content = raw_content.decode("utf-8")

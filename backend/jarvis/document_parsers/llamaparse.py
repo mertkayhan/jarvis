@@ -1,10 +1,12 @@
+import io
 from dotenv import load_dotenv
 import logging
 import gcsfs
 from llama_parse import LlamaParse, ResultType
-from os import getenv
+from jarvis.blob_storage import resolve_storage
 from jarvis.document_parsers.type import ParseResult, ProcessingResult
 from jarvis.document_parsers.utils import count_tokens, merge_pages
+import google.auth
 
 
 load_dotenv()
@@ -12,14 +14,11 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-GOOGLE_PROJECT = getenv("GOOGLE_PROJECT")
-assert GOOGLE_PROJECT, "GOOGLE_PROJECT is not set!"
-
-
 def document_handler(
     src_path: str, target_path: str, use_premium_mode: bool = True
 ) -> ProcessingResult:
-    fs = gcsfs.GCSFileSystem(project=GOOGLE_PROJECT, cache_timeout=0)  # type: ignore
+    _, project_id = google.auth.default()
+    fs = gcsfs.GCSFileSystem(project=project_id, cache_timeout=0)  # type: ignore
     logger.info("triggering llamaparse...")
     docs = LlamaParse(
         skip_diagonal_text=True,
@@ -45,8 +44,10 @@ def document_handler(
             for i, doc in enumerate(docs)
         ]
     )
-    with fs.open(target_path, "w") as f:
-        f.write(content)
+    storage = resolve_storage()
+    buf = io.BytesIO(content.encode("utf-8"))
+    storage.write(buf, target_path)
+
     return ProcessingResult(
         document_name=src_path,
         failed=False,

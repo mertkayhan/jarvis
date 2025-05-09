@@ -1,6 +1,7 @@
 export interface Message extends Record<string, any> {
     id: string
     chatId: string
+    userId: string
     createdAt?: Date
     content: string
     role: 'user' | 'assistant' | 'system'

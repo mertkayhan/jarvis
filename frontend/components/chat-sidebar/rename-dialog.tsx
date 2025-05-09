@@ -2,8 +2,7 @@
 
 import { Dispatch, SetStateAction, useTransition } from "react";
 import { UserChat } from "@/lib/types";
-import { useRef } from "react";
-import { DialogContent, DialogFooter, DialogHeader, DialogClose } from '../ui/dialog';
+import { DialogContent, DialogHeader } from '../ui/dialog';
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,11 +13,11 @@ import { IconSpinner } from "../ui/icons";
 interface RenameDialogProps {
     setTitle: Dispatch<SetStateAction<string>>
     title: string,
-    chat: UserChat
+    chat: UserChat,
+    setOpen: Dispatch<SetStateAction<boolean>>
 }
 
-export function RenameDialog({ setTitle, title, chat }: RenameDialogProps) {
-    const hiddenCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+export function RenameDialog({ setTitle, title, chat, setOpen }: RenameDialogProps) {
     const queryClient = useQueryClient();
     const { toast } = useToast();
     const [transitioning, startTransition] = useTransition();
@@ -40,53 +39,35 @@ export function RenameDialog({ setTitle, title, chat }: RenameDialogProps) {
             <DialogHeader>
                 Update Chat Title
             </DialogHeader>
-            <DialogClose asChild>
-                <button hidden ref={hiddenCloseButtonRef} onClick={e => e.stopPropagation()}></button>
-            </DialogClose>
-            <div
-                className="flex w-full max-w-sm items-center space-x-2"
+            <form
+                className="flex w-full items-center space-x-2"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    if (title.trim()) {
+                        startTransition(() => {
+                            renameMutation.mutate(title.trim());
+                            setTitle("");
+                            setOpen(false);
+                        });
+                    }
+                }}
             >
-                <form
-                    className="flex w-full items-center"
-                    action="#"
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        if (title.trim()) {
-                            startTransition(() => {
-                                renameMutation.mutate(title.trim());
-                                setTitle("");
-                                hiddenCloseButtonRef.current?.click();
-                            });
-                        }
-                    }}
+                <Input
+                    type='text'
+                    placeholder="New title"
+                    value={title}
+                    onChange={(e) => { setTitle(e.target.value) }}
+                    className="flex w-full"
+                />
+                <Button
+                    type='submit'
+                    variant='outline'
+                    disabled={renameMutation.isPending || transitioning}
                 >
-                    <Input
-                        type='text'
-                        placeholder="New title"
-                        value={title}
-                        onChange={(e) => { setTitle(e.target.value) }}
-                    />
-                </form>
-            </div>
-            <DialogFooter>
-                <DialogClose>
-                    <Button
-                        type='button'
-                        variant='outline'
-                        onClick={() => {
-                            if (title.trim()) {
-                                startTransition(() => {
-                                    renameMutation.mutate(title.trim());
-                                    setTitle("");
-                                });
-                            }
-                        }}
-                    >
-                        {(renameMutation.isPending || transitioning) && <IconSpinner className="ml-2 animate-spin" />}
-                        Save
-                    </Button>
-                </DialogClose>
-            </DialogFooter>
+                    {(renameMutation.isPending || transitioning) && <IconSpinner className="mr-2 animate-spin" />}
+                    Save
+                </Button>
+            </form>
         </DialogContent>
     )
 }

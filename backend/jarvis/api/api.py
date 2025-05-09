@@ -2,30 +2,35 @@ import asyncio
 import datetime
 import json
 import os
-from typing import Annotated, Any, Dict, Optional
+from typing import Annotated, Any, Dict, List, Optional
 from uuid import UUID, uuid4
 from fastapi import (
     Depends,
     FastAPI,
-    File,
-    UploadFile,
     Form,
     Request,
     HTTPException,
     Query,
+    UploadFile,
 )
 from fastapi.security import HTTPBearer
-import gcsfs
 from psycopg import AsyncConnection
 from pydantic import BaseModel
 from jarvis.auth.auth import validate_token
-from jarvis.blob_storage.storage import generate_download_signed_url_v4
+from jarvis.blob_storage import resolve_storage
+from jarvis.chat.chat_title import create_chat_title
 from jarvis.db.db import get_connection_pool
 from jarvis.document_parsers.parser import resolve_parser
-from jarvis.queries.query_handlers import insert_doc, register_transaction
+from jarvis.models.models import model_factory
+from jarvis.queries.query_handlers import (
+    get_chat_model,
+    get_message_history,
+    insert_doc,
+    update_chat_title,
+)
 from jarvis.question_pack.retriever import generate_embedding
 from jarvis.tools import ALL_AVAILABLE_TOOLS
-from models import ALL_SUPPORTED_MODELS
+from jarvis.models import ALL_SUPPORTED_MODELS
 from fastapi.responses import ORJSONResponse
 from dotenv import load_dotenv
 import logging
@@ -84,11 +89,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-GOOGLE_PROJECT = os.getenv("GOOGLE_PROJECT")
-assert GOOGLE_PROJECT, "'GOOGLE_PROJECT' is not set!"
-DOCUMENT_BUCKET = os.getenv("DOCUMENT_BUCKET")
-assert DOCUMENT_BUCKET, "'DOCUMENT_BUCKET' is not set!"
 
 
 class AIModel(BaseModel):
@@ -151,6 +151,181 @@ async def get_default_system_prompt(user_id: str) -> SystemPrompt:
     )
 
 
+class AutoGenChatTitle(BaseModel):
+    title: str
+
+
+@app.patch(
+    "/api/v1/users/{user_id}/chats/{chat_id}/title/autogen",
+    response_model=AutoGenChatTitle,
+)
+async def generate_chat_title(user_id: str, chat_id: str) -> AutoGenChatTitle:
+    try:
+        [chat_model, history] = await asyncio.gather(
+            get_chat_model(chat_id), get_message_history(chat_id)
+        )
+        model = model_factory(chat_model, 0)  # type: ignore
+        title = await create_chat_title(model, history)
+        await update_chat_title(chat_id, title)
+        return AutoGenChatTitle(title=title)
+    except Exception as err:
+        logger.error(f"failed to create chat title: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Title generation failed, please refer to the server logs for more information.",
+        )
+
+
+class UserChat(BaseModel):
+    id: UUID
+    owner_email: str
+    title: str
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+
+
+class UserChats(BaseModel):
+    chats: List[UserChat]
+
+
+@app.get("/api/v1/users/{user_id}/chats")
+async def get_all_user_chats(user_id: str, deleted: bool = False):
+    query = """
+        SELECT 
+            id,
+            owner_email,
+            title,
+            created_at, 
+            updated_at
+        FROM common.chat_history 
+        WHERE owner_email = %(user_id)s AND deleted = %(deleted)s
+        ORDER BY updated_at DESC
+    """
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                resp = await cur.execute(
+                    query,
+                    {
+                        "user_id": user_id,
+                        "deleted": deleted,
+                    },
+                )
+                res = await resp.fetchall()
+                return UserChats(chats=[UserChat(**r) for r in res])
+    except Exception as err:
+        logger.error(f"failed to fetch user chats: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to fetch user chats, please refer to server logs for more information",
+        )
+
+
+class DeletedChats(BaseModel):
+    id: List[str]
+
+
+@app.delete("/api/v1/users/{user_id}/chats")
+async def delete_all_user_chats(user_id: str):
+    query = """
+        UPDATE common.chat_history 
+        SET deleted = true 
+        WHERE owner_email = (%s)
+        RETURNING id
+    """
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.transaction():
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    resp = await cur.execute(query, (user_id,))
+                    res = await resp.fetchall()
+                    return DeletedChats(id=[r["id"] for r in res])
+    except Exception as err:
+        logger.error(f"failed to delete user chats: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to delete user chats, please refer to server logs for more details",
+        )
+
+
+class DeleteChatResult(BaseModel):
+    id: UUID
+
+
+@app.delete("/api/v1/users/{user_id}/chats/{chat_id}", response_model=DeleteChatResult)
+async def delete_chat(user_id: str, chat_id: str) -> DeleteChatResult:
+    query = """
+        UPDATE common.chat_history 
+        SET deleted = true 
+        WHERE id = (%s)
+        RETURNING id
+    """
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.transaction():
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    resp = await cur.execute(query, (chat_id,))
+                    res = await resp.fetchall()
+                    return DeleteChatResult(id=res[0]["id"])
+    except Exception as err:
+        logger.error(f"failed to delete chat: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to delete chat, please refer to server logs for more details",
+        )
+
+
+class ChatTitleUpdate(BaseModel):
+    new_title: str
+
+
+class ChatTitleUpdateResult(BaseModel):
+    title: str
+    chat_id: UUID
+
+
+@app.patch(
+    "/api/v1/users/{user_id}/chats/{chat_id}/title",
+    response_model=ChatTitleUpdateResult,
+)
+async def update_user_chat_title(
+    user_id: str, chat_id: str, payload: ChatTitleUpdate
+) -> ChatTitleUpdateResult:
+    query = """
+        UPDATE common.chat_history
+        SET title = %(new_title)s
+        WHERE id = %(chat_id)s
+        RETURNING id, title
+    """
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.transaction():
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    resp = await cur.execute(
+                        query,
+                        {
+                            "new_title": payload.new_title,
+                            "chat_id": chat_id,
+                        },
+                    )
+                    res = await resp.fetchall()
+                    return ChatTitleUpdateResult(
+                        chat_id=res[0]["id"],
+                        title=res[0]["title"],
+                    )
+
+    except Exception as err:
+        logger.error(f"failed to update chat title: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to update chat title, please refer to server logs for more details",
+        )
+
+
 @app.get(
     "/api/v1/users/{user_id}/models",
     response_model=UserModels,
@@ -187,7 +362,7 @@ class UploadResult(BaseModel):
 )
 async def upload_document(
     user_id: str,
-    fileb: Annotated[UploadFile, File()],
+    fileb: UploadFile,
     upload_id: Annotated[str, Form()],
     mode: Annotated[str, Form()],
     module: Annotated[str, Form()],
@@ -198,25 +373,18 @@ async def upload_document(
     # Input Validation: Missing input validation for user_id, upload_id, and fname can lead to injection attacks.
     # File Size Limits: Implement file size limits to prevent denial-of-service.
     # File Type Validation: Validate file content (e.g., using libmagic) to prevent malicious uploads, not just the extension.
-    # GCS Dependency: Tightly coupled to GCS. Abstract the storage mechanism for easier switching to other solutions.
-    # Stream the file end to end
 
     logger.info(f"received document {fileb.filename} for user {user_id}")
 
     try:
+        storage = resolve_storage()
         if module == "document_repo":
-            target_path = (
-                f"{DOCUMENT_BUCKET}/raw/{user_id}/{upload_id}/{fileb.filename}"
-            )
+            target_path = f"raw/{user_id}/{upload_id}/{fileb.filename}"
         elif module == "document_pack" and pack_id is not None:
-            target_path = (
-                f"{DOCUMENT_BUCKET}/document_packs/{pack_id}/raw/{fileb.filename}"
-            )
+            target_path = f"document_packs/{pack_id}/raw/{fileb.filename}"
         else:
             raise ValueError("unknown module")
-        fs = gcsfs.GCSFileSystem(project=GOOGLE_PROJECT)  # type: ignore
-        with fs.open(target_path, "wb") as f:
-            f.write(fileb.file.read())  # type: ignore
+        storage.write(fileb.file, target_path)
     except Exception as err:
         logger.error(f"raw document upload failed: {err}", exc_info=True)
         return UploadResult(success=False, message="document upload failed")
@@ -227,7 +395,7 @@ async def upload_document(
     # .csv,.txt,.pdf,.xlsx supported
     try:
         parsers = resolve_parser(fileb.filename)  # TODO:
-        source_path = f"{DOCUMENT_BUCKET}/raw/{user_id}/{upload_id}/{fileb.filename}"
+        source_path = f"raw/{user_id}/{upload_id}/{fileb.filename}"
         target_path = source_path.replace("raw", "parsed") + ".md"
         processing_mode = mode
         idx = next(i for i, v in enumerate(parsers) if v.kind == processing_mode)
@@ -249,9 +417,7 @@ async def upload_document(
             message=f"document_done_{fileb.filename}_{user_id}",
             num_pages=res["num_pages"],
             num_tokens=res["num_tokens"],
-            url=generate_download_signed_url_v4(
-                GOOGLE_PROJECT,  # type: ignore
-                DOCUMENT_BUCKET,  # type: ignore
+            url=storage.generate_presigned_url(
                 f"raw/{user_id}/{upload_id}/{fileb.filename}",
             ),
         )
@@ -535,25 +701,6 @@ async def get_question_pack_questions(
 
 # @app.delete("/api/v1/users/{user_id}/chats/{chat_id}/messages/{message_id}")
 # async def delete_message(user_id: str, chat_id: str, message_id: str):
-#     pass
-
-
-# @app.delete("/api/v1/users/{user_id}/chats")
-# async def delete_all_user_chats(user_id: str):
-#     pass
-
-
-# class ChatTitleUpdate(BaseModel):
-#     new_title: str
-
-
-# @app.patch("/api/v1/users/{user_id}/chats/{chat_id}/title")
-# async def update_chat_title(user_id: str, chat_id: str, payload: ChatTitleUpdate):
-#     pass
-
-
-# @app.delete("/api/v1/users/{user_id}/chats/{chat_id}")
-# async def delete_chat(user_id: str, chat_id: str):
 #     pass
 
 

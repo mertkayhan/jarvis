@@ -20,13 +20,11 @@ import { useCopyToClipboard } from '@/lib/hooks/use-copy-to-clipboard'
 interface ChatShareDialogProps extends DialogProps {
     chat: Pick<UserChat, 'id' | 'title' | 'messages'>
     shareChat: (id: string) => UserChat
-    onCopy: () => void
 }
 
 export function ChatShareDialog({
     chat,
     shareChat,
-    onCopy,
     ...props
 }: ChatShareDialogProps) {
     const { copyToClipboard } = useCopyToClipboard({ timeout: 1000 })
@@ -42,7 +40,6 @@ export function ChatShareDialog({
             url.pathname = chat.sharePath
             url.search = ""
             copyToClipboard(decodeURIComponent(url.toString()))
-            onCopy()
             toast.success('Share link copied to clipboard', {
                 style: {
                     borderRadius: '10px',
@@ -56,7 +53,7 @@ export function ChatShareDialog({
                 }
             })
         },
-        [copyToClipboard, onCopy]
+        [copyToClipboard]
     )
 
     return (

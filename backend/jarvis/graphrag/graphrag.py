@@ -1,4 +1,5 @@
 import asyncio
+import io
 import os
 from typing import Any, Dict
 from graphrag.api import (
@@ -37,8 +38,8 @@ from pathlib import Path
 import pandas as pd
 from graphrag.cli.query import _resolve_output_files
 from glob import glob
-from jarvis.blob_storage.storage import must_list
 from dotenv import load_dotenv
+from jarvis.blob_storage import resolve_storage
 
 load_dotenv()
 
@@ -92,24 +93,24 @@ def init(pack_id: str, cfg_dict: Dict[str, Any]):
                 file.write(content.encode(encoding="utf-8", errors="strict"))
 
 
-async def sync_with_gcs(pack_id: str, bucket: str):
-    root = Path(f"/tmp/jarvis/{pack_id}")
-    source_path = f"document_packs/{pack_id}/preprocessed"
-    fs = gcsfs.GCSFileSystem(project=os.getenv("GOOGLE_PROJECT"))
-    blobs = await must_list(os.getenv("GOOGLE_PROJECT"), bucket, source_path)
-    doc_paths = [f"{bucket}/{blob}" for blob in blobs]
-    logger.info(f"found docs: {doc_paths}")
-    logger.info("copying from gcs to local...")
-    for doc in doc_paths:
-        with fs.open(doc, "rb") as f:
-            tmp = f.read()
-        fname = doc.replace(f"{source_path}/", "").replace(f"{bucket}/", "")
-        # extension is explicitly checked
-        with open(f"{root}/input/{fname}.txt", "wb") as f:
-            f.write(tmp)
+# async def sync_with_gcs(pack_id: str, bucket: str):
+#     root = Path(f"/tmp/jarvis/{pack_id}")
+#     source_path = f"document_packs/{pack_id}/preprocessed"
+#     fs = gcsfs.GCSFileSystem(project=os.getenv("GOOGLE_PROJECT"))
+#     blobs = await must_list(os.getenv("GOOGLE_PROJECT"), bucket, source_path)
+#     doc_paths = [f"{bucket}/{blob}" for blob in blobs]
+#     logger.info(f"found docs: {doc_paths}")
+#     logger.info("copying from gcs to local...")
+#     for doc in doc_paths:
+#         with fs.open(doc, "rb") as f:
+#             tmp = f.read()
+#         fname = doc.replace(f"{source_path}/", "").replace(f"{bucket}/", "")
+#         # extension is explicitly checked
+#         with open(f"{root}/input/{fname}.txt", "wb") as f:
+#             f.write(tmp)
 
 
-async def index_documents(pack_id: str, bucket: str):
+async def index_documents(pack_id: str):
     root = Path(f"/tmp/jarvis/{pack_id}")
     with open("jarvis/graphrag/cfg.yaml", "rb") as f:
         cfg_dict = yaml.safe_load(f)
@@ -125,22 +126,24 @@ async def index_documents(pack_id: str, bucket: str):
         logger.info("done")
     else:
         logger.info(f"index {pack_id} already exists")
-    logger.info("sync files")
-    await sync_with_gcs(pack_id, bucket)
+    # logger.info("sync files")
+    # await sync_with_gcs(pack_id, bucket)
     logger.info("done")
     logger.info("generating graphrag config")
-    cfg = create_graphrag_config.create_graphrag_config(values=cfg_dict, root_dir=root)
+    cfg = create_graphrag_config.create_graphrag_config(
+        values=cfg_dict, root_dir=root.as_posix()
+    )
     logger.info("done")
     logger.info("start building index")
     await build_index(cfg)
     logger.info("done")
-    fs = gcsfs.GCSFileSystem(project=os.getenv("GOOGLE_PROJECT"), cache_timeout=0)
+    storage = resolve_storage()
     for p in crawl(root):
         p_stream = p.read_bytes()
         name = p.as_posix().replace(root.as_posix(), "").strip("/")
-        target = f"{bucket}/document_packs/{pack_id}/indices/{name}"
-        with fs.open(target, "wb") as f:
-            f.write(p_stream)
+        target = f"document_packs/{pack_id}/indices/{name}"
+        buf = io.BytesIO(p_stream)
+        storage.write(buf, target)
 
 
 def crawl(root: Path):
@@ -167,8 +170,8 @@ async def query_documents(
 
 
 async def global_search(root: str, query: str) -> Dict[str, Any]:
-    root = Path(root)
-    settings_yaml = root / "settings.yaml"
+    root_dir = Path(root)
+    settings_yaml = root_dir / "settings.yaml"
     with open(settings_yaml, "rb") as f:
         cfg_dict = yaml.safe_load(f)
     config = create_graphrag_config.create_graphrag_config(
@@ -209,8 +212,8 @@ async def global_search(root: str, query: str) -> Dict[str, Any]:
 
 
 async def local_search(root: str, query: str) -> Dict[str, Any]:
-    root = Path(root)
-    settings_yaml = root / "settings.yaml"
+    root_dir = Path(root)
+    settings_yaml = root_dir / "settings.yaml"
     with open(settings_yaml, "rb") as f:
         cfg_dict = yaml.safe_load(f)
     config = create_graphrag_config.create_graphrag_config(
@@ -254,7 +257,7 @@ async def local_search(root: str, query: str) -> Dict[str, Any]:
     source_snippets["human_readable_id"] = (
         source_snippets["id"].apply(lambda x: int(x)) + 1
     )
-    documents_pq = root / "output/documents.parquet"
+    documents_pq = root_dir / "output/documents.parquet"
     documents = pd.read_parquet(documents_pq, columns=["id", "title"]).rename(
         columns={"id": "document_id"}
     )

@@ -1,18 +1,17 @@
 import asyncio
 import itertools
-import os
-from typing import List, Optional, TypedDict
-import gcsfs
+from typing import List
 import fitz
 import io
 from vertexai.generative_models import GenerativeModel, Part, SafetySetting
 import logging
-from dotenv import load_dotenv
 import vertexai
 from google.api_core.exceptions import ResourceExhausted
+from jarvis.blob_storage import resolve_storage
 from jarvis.document_parsers.type import ParseResult, ProcessingResult
 from jarvis.document_parsers.utils import count_tokens, merge_pages
 import vertexai.generative_models
+import google.auth
 
 
 """
@@ -20,13 +19,9 @@ I am about to give up on Gemini as OCR because the safety filters get randomly t
 due to recitation. There seems to be an open issue on the topic but no updates so far. 
 """
 
-load_dotenv()
-
 logger = logging.getLogger(__name__)
-GOOGLE_PROJECT = os.getenv("GOOGLE_PROJECT")
-assert GOOGLE_PROJECT, "GOOGLE_PROJECT is not set!"
-
-vertexai.init(project=GOOGLE_PROJECT, location="europe-west1")
+_, project_id = google.auth.default()
+vertexai.init(project=project_id, location="europe-west1")
 model = GenerativeModel(
     "gemini-2.0-flash-001",
     safety_settings=[
@@ -73,9 +68,8 @@ async def gemini_pdf_processor(src_path: str, target_path: str) -> ProcessingRes
     """
 
     logger.info(f"processing {src_path}")
-    fs = gcsfs.GCSFileSystem(project=GOOGLE_PROJECT, cache_timeout=0)  # type: ignore
-    with fs.open(src_path, "rb") as f:
-        pdf_data = f.read()
+    storage = resolve_storage()
+    pdf_data = storage.read(src_path)
 
     doc = fitz.open(stream=pdf_data, filetype="pdf")
 
@@ -106,8 +100,8 @@ async def gemini_pdf_processor(src_path: str, target_path: str) -> ProcessingRes
         )
     num_pages = len(res)
     content = merge_pages(res)
-    with fs.open(target_path, "w") as f:
-        f.write(content)
+    buf = io.BytesIO(content.encode("utf-8"))
+    storage.write(buf, target_path)
     logger.info(f"written {target_path}")
     return ProcessingResult(
         document_name=src_path,

@@ -1,5 +1,5 @@
 import asyncio
-from typing import List
+from typing import List, Optional
 from jarvis.document_parsers.csv import process_csv
 from jarvis.document_parsers.gemini import gemini_pdf_processor
 from jarvis.document_parsers.llamaparse import document_handler
@@ -7,7 +7,9 @@ from jarvis.document_parsers.txt import process_txt
 from jarvis.document_parsers.type import Parser, ProcessingResult
 
 
-def resolve_parser(fname: str) -> List[Parser]:
+def resolve_parser(fname: Optional[str]) -> List[Parser]:
+    if not fname:
+        raise ValueError("file name is not available")
     if (
         not fname.lower().endswith(".csv")
         and not fname.lower().endswith(".txt")

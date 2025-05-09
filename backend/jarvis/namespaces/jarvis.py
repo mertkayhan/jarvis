@@ -38,8 +38,6 @@ from jarvis.models.models import model_factory
 load_dotenv()
 
 logger = logging.getLogger(__name__)
-DOCUMENT_BUCKET = os.getenv("DOCUMENT_BUCKET")
-assert DOCUMENT_BUCKET, "DOCUMENT_BUCKET is not set!"
 
 
 class Jarvis(Base):
@@ -118,14 +116,6 @@ class Jarvis(Base):
 
         # persist user message
         await create_message(data, chat_id)
-        # if skip_message(data["content"]):
-        #     logger.info("message for @self skipping...")
-        #     return await self.emit(
-        #         "server_message",
-        #         {"content": "<done>", "data": json.dumps({"chat_id": chat_id})},
-        #         room=chat_id,
-        #         namespace=self.namespace,
-        #     )
 
         # start AI message generation
         chat_model: Optional[str] = await get_chat_model(chat_id)
@@ -186,20 +176,6 @@ class Jarvis(Base):
     async def on_join_chat_room(self, sid, data):
         logger.info(f"{sid} requesting to join chat room {data['room_id']}")
         await self._room_resolver(sid, data["room_id"])
-
-    async def on_generate_chat_title(self, sid, data):
-        try:
-            chat_id = data.get("chat_id")
-            [chat_model, history] = await asyncio.gather(
-                get_chat_model(chat_id), get_message_history(chat_id)
-            )
-            model = model_factory(chat_model, 0)  # type: ignore
-            title = await create_chat_title(model, history)
-            await update_chat_title(chat_id, title)
-            return True
-        except Exception as err:
-            logger.error(f"failed to create chat title: {err}", exc_info=True)
-            return False
 
     async def _create_chat(self, chat_id, user_id, sid):
         await create_chat(chat_id, user_id)

@@ -109,6 +109,7 @@ export function ChatPanel({
                 id: msgId,
                 content: value,
                 chatId: id,
+                userId: userId,
                 role: 'user',
                 data: JSON.stringify({
                   "chat_id": id,
