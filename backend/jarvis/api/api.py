@@ -824,6 +824,122 @@ async def set_user_model_selection(
         )
 
 
+class Personality(BaseModel):
+    name: str
+    description: str
+    owner: str = ""
+    id: Optional[UUID] = None
+    instructions: str = ""
+    isDefault: bool = False
+    tools: List[str] = []
+    doc_ids: List[str] = []
+
+
+class Personalities(BaseModel):
+    personalities: List[Personality]
+
+
+@app.get("/api/v1/users/{user_id}/personalities")
+async def get_user_personalities(user_id: str):
+    list_query = """
+        SELECT 
+            id,
+            description,
+            name,
+            owner
+        FROM common.personalities
+        WHERE deleted = false AND owner IN ('system', %(user_id)s)
+        ORDER BY updated_at DESC
+    """
+    default_query = """
+        SELECT 
+            user_id,
+            personality_id
+        FROM common.default_personalities 
+        WHERE user_id = %(user_id)s
+    """
+
+    async def _get_default_personality(conn: AsyncConnection) -> Dict[str, Any]:
+        async with conn.cursor(row_factory=dict_row) as cur:
+            resp = await cur.execute(default_query, {"user_id": user_id})
+            res = await resp.fetchall()
+            return res[0] if res else {"personality_id": None}
+
+    async def _get_personalities(conn: AsyncConnection) -> List[Dict[str, Any]]:
+        async with conn.cursor(row_factory=dict_row) as cur:
+            resp = await cur.execute(list_query, {"user_id": user_id})
+            res = await resp.fetchall()
+            return res
+
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            [personalities, default_personality] = await asyncio.gather(
+                *[_get_personalities(conn), _get_default_personality(conn)]
+            )
+            return Personalities(
+                personalities=[
+                    Personality(
+                        id=p["id"],  # type: ignore
+                        description=p["description"],  # type: ignore
+                        name=p["name"],  # type: ignore
+                        owner=p["owner"],  # type: ignore
+                        isDefault=(default_personality["personality_id"] == p["id"]),  # type: ignore
+                    )
+                    for p in personalities
+                ]
+            )
+
+    except Exception as err:
+        logger.error(f"failed to get user personalities: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to get user personalities, please refer to the server logs for more information",
+        )
+
+
+class CreatePersonalityResult(BaseModel):
+    id: UUID
+
+
+@app.post("/api/v1/users/{user_id}/personalities")
+async def create_personality(user_id: str, payload: Personality):
+    query = """
+        INSERT INTO common.personalities (
+            id, instructions, name, owner, description, tools, doc_ids
+        ) VALUES (
+            %(id)s, %(instructions)s, %(name)s, %(owner)s, %(description)s, %(tools)s, %(doc_ids)s
+        )
+        RETURNING id
+    """
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.transaction():
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    resp = await cur.execute(
+                        query,
+                        {
+                            "id": uuid4(),
+                            "instructions": payload.instructions,
+                            "name": payload.name,
+                            "owner": user_id,
+                            "description": payload.description,
+                            "tools": payload.tools,
+                            "doc_ids": payload.doc_ids,
+                        },
+                    )
+                    res = await resp.fetchall()
+                    return CreatePersonalityResult(id=res[0]["id"])
+
+    except Exception as err:
+        logger.error(f"failed to create personality: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to create personality, please refer to server logs for more details",
+        )
+
+
 # @app.get("/api/v1/users/{user_id}/chats/{chat_id}/messages")
 # async def get_chat_messages(user_id: str, chat_id: str, deleted: bool = False):
 #     pass
@@ -872,19 +988,9 @@ async def set_user_model_selection(
 #     pass
 
 
-# @app.get("/api/v1/users/{user_id}/personalities")
-# async def get_user_personalities(user_id: str):
-#     pass
-
-
 # class UserPersonality(BaseModel):
 #     personality_id: str
 #     # TODO:
-
-
-# @app.post("/api/v1/users/{user_id}/personalities")
-# async def create_personality(user_id: str, payload: UserPersonality):
-#     pass
 
 
 # @app.delete("/api/v1/users/{user_id}/personalities/{personality_id}")

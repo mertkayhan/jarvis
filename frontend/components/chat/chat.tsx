@@ -2,7 +2,7 @@
 
 import { DocumentPack, Message, Personality, QuestionPack } from '@/lib/types'
 import { ChatPanel } from '@/components/chat/chat-panel'
-import React, { useState, Dispatch, SetStateAction } from 'react';
+import React, { useState, Dispatch, SetStateAction, useEffect, useRef } from 'react';
 import {
     ResizableHandle,
     ResizablePanel,
@@ -20,9 +20,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { PersonalitySelectionMenu } from '../personalities/personality-selection-menu';
 import { Socket } from 'socket.io-client';
 import { ModelSelection } from '../model-selection/model-selection';
-import { IconArrowRight, IconClose } from '../ui/icons';
+import { IconArrowRight, IconClose, IconSpinner } from '../ui/icons';
 import { KnowledgeMenu } from '../knowledge/knowledge-selection-menu';
 import { KnowledgeDropdown } from '../knowledge/knowledge-dropdown';
+import { toast } from 'react-hot-toast';
+import { useToast } from '@/lib/hooks/use-toast';
+import { ToastAction } from '../ui/toast';
 
 
 
@@ -74,10 +77,21 @@ export function Chat({
 
     const [open, setOpen] = useState(false);
     const [kind, setKind] = useState("");
+    const {toast, dismiss} = useToast();
+    const currentToastId = useRef<string | null>(null);
 
-    // console.log("connected", socket?.connected);
-
-    // console.log("is loading", isLoading);
+    useEffect(() => {
+        if (!initialized) {
+            const { id } = toast({
+                title: "Initializing chat",
+                action: <ToastAction altText="spinner"><IconSpinner className="animate-spin" /></ToastAction>,
+            });
+            currentToastId.current = id;
+        } else if (currentToastId.current) {
+                dismiss(currentToastId.current);
+                currentToastId.current = null;
+        }
+    }, [initialized]);
 
     return (
         <ResizablePanelGroup direction='horizontal'>
@@ -177,7 +191,7 @@ export function Chat({
                                         autoScroll={autoScroll}
                                     />
                                 </motion.div>
-                                {initialized && messages.length === 0 &&
+                                {messages.length === 0 &&
                                     <TooltipProvider>
                                         <div className='hidden w-full md:flex flex-1 grid-cols-3 items-center gap-x-2 h-10 justify-center'>
                                             <div className="space-y-2">
@@ -245,36 +259,34 @@ export function Chat({
                                     </TooltipProvider>
                                 }
                                 {/* Chat Input Box Section - Initially Centered */}
-                                {initialized &&
-                                    <motion.div
-                                        className={`md:pt-4 w-full flex flex-col transition-all items-center mx-auto ${messages.length > 0 ? '' : 'justify-start h-full flex-grow'}`}
-                                    >
-                                        <ChatPanel
-                                            id={id as string}
-                                            isLoading={isLoading[id]}
-                                            stop={cancel}
-                                            append={append}
-                                            reload={reload}
-                                            messageCount={messages?.length || 0}
-                                            input={input}
-                                            setInput={setInput}
-                                            userId={userId}
-                                            path={path}
-                                            generateFollowUp={generateFollowUp}
-                                            hasSystemPrompt={hasSystemPrompt}
-                                            selectedDocuments={selectedDocuments}
-                                            selectedPersonality={selectedPersonality}
-                                            autoScroll={autoScroll}
-                                            setAutoScroll={setAutoScroll}
-                                            selectedQuestionPack={selectedQuestionPack}
-                                            setSelectedDocuments={setSelectedDocuments}
-                                            selectedDocumentPack={selectedDocumentPack}
-                                            dispatch={setLoading}
-                                            setSelectedQuestionPack={setSelectedQuestionPack}
-                                            setSelectedDocumentPack={setSelectedDocumentPack}
-                                        />
-                                    </motion.div>
-                                }
+                                <motion.div
+                                    className={`md:pt-4 w-full flex flex-col transition-all items-center mx-auto ${messages.length > 0 ? '' : 'justify-start h-full flex-grow'}`}
+                                >
+                                    <ChatPanel
+                                        id={id as string}
+                                        isLoading={isLoading[id]}
+                                        stop={cancel}
+                                        append={append}
+                                        reload={reload}
+                                        messageCount={messages?.length || 0}
+                                        input={input}
+                                        setInput={setInput}
+                                        userId={userId}
+                                        path={path}
+                                        generateFollowUp={generateFollowUp}
+                                        hasSystemPrompt={hasSystemPrompt}
+                                        selectedDocuments={selectedDocuments}
+                                        selectedPersonality={selectedPersonality}
+                                        autoScroll={autoScroll}
+                                        setAutoScroll={setAutoScroll}
+                                        selectedQuestionPack={selectedQuestionPack}
+                                        setSelectedDocuments={setSelectedDocuments}
+                                        selectedDocumentPack={selectedDocumentPack}
+                                        dispatch={setLoading}
+                                        setSelectedQuestionPack={setSelectedQuestionPack}
+                                        setSelectedDocumentPack={setSelectedDocumentPack}
+                                    />
+                                </motion.div>
                             </motion.div>
                         </>
                 </>

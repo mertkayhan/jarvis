@@ -67,6 +67,7 @@ export function useSocketHandlers(
                         setSelectedPersonality(data.personality || defaultSystemPrompt);
                     }
                 } else {
+                    setMessages([]);
                     setCurrentContext(null);
                     if (!defaultPersonality.isFetching && defaultPersonality.data?.personality) {
                         setSelectedPersonality(defaultPersonality.data.personality);
@@ -84,7 +85,7 @@ export function useSocketHandlers(
             setTimeout(() => setInitialized(true), 100);
         });
         return () => {
-            setMessages([]);
+            // setMessages([]);
             setSelectedDocuments([]);
             setSelectedPersonality(defaultSystemPrompt);
             setInitialized(false);

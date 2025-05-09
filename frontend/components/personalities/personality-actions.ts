@@ -2,7 +2,7 @@
 
 import { Personality } from "@/lib/types";
 import postgres from "postgres";
-import { getToken } from "../chat/chat-actions";
+import { callBackend } from "@/lib/utils";
 
 const uri = process.env.DB_URI || "unknown";
 const sql = postgres(uri, { connection: { application_name: "Jarvis" } });
@@ -37,16 +37,10 @@ export async function getPersonality(id: string, userId: string) {
 }
 
 export async function getAvailableTools(userId: string) {
-    const backendUrl = process.env.BACKEND_URL;
-    const token = await getToken();
-    const resp = await fetch(
-        `${backendUrl}/api/v1/users/${userId}/tools`,
-        {
-            method: "GET",
-            headers: { "Authorization": `Bearer ${token}` }
-        }
-    );
-    const data = await resp.json();
+    const data = await callBackend({
+        endpoint: `/api/v1/users/${userId}/tools`,
+        method: "GET",
+    });
     return { tools: data.tools };
 }
 
@@ -56,70 +50,31 @@ export interface ListPersonalitiesResp {
 
 export async function listPersonalities(userId: string) {
     console.log("list personalities", userId);
-    return await listPersonalitiesHandler(userId);
-}
-
-async function listPersonalitiesHandler(userId: string) {
-    const listPersonalities = sql`
-    SELECT 
-        id,
-        description,
-        name,
-        owner
-    FROM common.personalities
-    WHERE deleted = false AND owner IN ('system', ${userId})
-    ORDER BY updated_at DESC
-    `;
-    const getDefaultPersonality = sql`
-    SELECT 
-        user_id,
-        personality_id
-    FROM common.default_personalities 
-    WHERE user_id = ${userId}
-    `
-    try {
-        const [personalities, defaultPersonality] = await Promise.all([listPersonalities, getDefaultPersonality]);
-        return {
-            personalities: personalities.map((p) => {
-                return {
-                    ...p,
-                    isDefault: (defaultPersonality.length) ? p.id === defaultPersonality[0]["personality_id"] : false
-                } as Personality
-            })
-        } as ListPersonalitiesResp;
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+    const data = await callBackend({
+        endpoint: `/api/v1/users/${userId}/personalities`,
+        method: "GET",
+    });
+    return data as ListPersonalitiesResp;
 }
 
 interface CreatePersonalityResp {
     id: string
 }
 
-export async function createPersonality(id: string, name: string, description: string, instructions: string, owner: string, tools: string[], docIds: string[]) {
-    console.log("create personality", id, name, description, instructions, owner, tools, docIds);
-    return await createPersonalityHandler(id, name, description, instructions, owner, tools, docIds);
-}
-
-async function createPersonalityHandler(id: string, name: string, description: string, instructions: string, owner: string, tools: string[], docIds: string[]) {
-    try {
-        const res = await sql.begin((sql) => [
-            sql`
-            INSERT INTO common.personalities (
-                id, instructions, name, owner, description, tools, doc_ids
-            ) VALUES (
-                ${id}::uuid, ${instructions}, ${name}, ${owner}, ${description}, ${tools}, ${docIds}
-            )
-            RETURNING id
-            `
-        ]);
-        console.log("res:", res);
-        return { id: res[0][0].id } as CreatePersonalityResp;
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+export async function createPersonality(userId: string, name: string, description: string, instructions: string, owner: string, tools: string[], docIds: string[]) {
+    console.log("create personality", userId, name, description, instructions, owner, tools, docIds);
+    const data = await callBackend({
+        endpoint: `/api/v1/users/${userId}/personalities`,
+        method: "POST",
+        body: {
+            "instructions": instructions,
+            "name": name,
+            "description": description,
+            "tools": tools,
+            "doc_ids": docIds,
+        }
+    });
+    return data as CreatePersonalityResp;
 }
 
 interface DeletePersonalityResp {

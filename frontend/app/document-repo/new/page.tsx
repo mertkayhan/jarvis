@@ -56,7 +56,7 @@ export default function Page() {
                 />
 
             </div>
-            <main className="container h-full dark:bg-slate-900 rounded-lg bg-slate-200">
+            <main className="container h-full rounded-lg">
                 <header className="p-2">
                     <h2 className="text-lg">New Document Pack</h2>
                 </header>
@@ -91,7 +91,7 @@ export default function Page() {
                     </div>
                     < div className="flex w-full justify-end" >
                         <Button
-                            variant="secondary"
+                            variant="outline"
                             className="w-full"
                             type="submit"
                             disabled={description.trim().length === 0 || name.trim().length === 0}
