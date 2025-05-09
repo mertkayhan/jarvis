@@ -19,7 +19,7 @@ export function DeleteDialog({ personalityId, setOpen, userId }: DeleteDialogPro
     const queryClient = useQueryClient();
     const { toast } = useToast();
     const deleteMutation = useMutation({
-        mutationFn: (personalityId: string) => deletePersonality(personalityId),
+        mutationFn: (personalityId: string) => deletePersonality(userId, personalityId),
         onSuccess: async (resp) => {
             await queryClient.setQueryData(["listPersonalities", userId], (old: ListPersonalitiesResp) => {
                 if (!old.personalities) {

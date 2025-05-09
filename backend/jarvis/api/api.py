@@ -839,8 +839,9 @@ class Personalities(BaseModel):
     personalities: List[Personality]
 
 
-@app.get("/api/v1/users/{user_id}/personalities")
-async def get_user_personalities(user_id: str):
+@app.get("/api/v1/users/{user_id}/personalities", response_model=Personalities)
+async def get_user_personalities(user_id: str) -> Personalities:
+    # TODO: This needs to be a join!
     list_query = """
         SELECT 
             id,
@@ -940,6 +941,78 @@ async def create_personality(user_id: str, payload: Personality):
         )
 
 
+class DeletePersonalityResult(BaseModel):
+    id: UUID
+
+
+@app.delete(
+    "/api/v1/users/{user_id}/personalities/{personality_id}",
+    response_model=DeletePersonalityResult,
+)
+async def delete_personality(
+    user_id: str, personality_id: str
+) -> DeletePersonalityResult:
+    query = """
+        UPDATE common.personalities
+        SET deleted = true 
+        WHERE id = (%s)
+        RETURNING id
+    """
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.transaction():
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    resp = await cur.execute(query, (personality_id,))
+                    res = await resp.fetchall()
+                    return DeletePersonalityResult(id=res[0]["id"])
+    except Exception as err:
+        logger.error(f"failed to delete personality: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to delete personality, please refer to the server logs for more information",
+        )
+
+
+class UpdatePersonalityResult(BaseModel):
+    id: UUID
+
+
+@app.put("/api/v1/users/{user_id}/personalities/{personality_id}")
+async def update_personality(user_id: str, personality_id: str, payload: Personality):
+    query = """
+        UPDATE common.personalities
+        SET name = %(name)s, instructions = %(instructions)s, description = %(description)s, tools = %(tools)s, doc_ids = %(docs)s, owner = %(owner)s
+        WHERE id = %(id)s
+        RETURNING id
+    """
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.transaction():
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    resp = await cur.execute(
+                        query,
+                        {
+                            "id": personality_id,
+                            "name": payload.name,
+                            "instructions": payload.instructions,
+                            "description": payload.description,
+                            "tools": payload.tools,
+                            "docs": payload.doc_ids,
+                            "owner": user_id,
+                        },
+                    )
+                    res = await resp.fetchall()
+                    return UpdatePersonalityResult(id=res[0]["id"])
+    except Exception as err:
+        logger.error(f"failed to update personality: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to update personality, please check server logs for more information",
+        )
+
+
 # @app.get("/api/v1/users/{user_id}/chats/{chat_id}/messages")
 # async def get_chat_messages(user_id: str, chat_id: str, deleted: bool = False):
 #     pass
@@ -985,23 +1058,6 @@ async def create_personality(user_id: str, payload: Personality):
 
 # @app.delete("/api/v1/users/{user_id}/chats/{chat_id}/messages/{message_id}")
 # async def delete_message(user_id: str, chat_id: str, message_id: str):
-#     pass
-
-
-# class UserPersonality(BaseModel):
-#     personality_id: str
-#     # TODO:
-
-
-# @app.delete("/api/v1/users/{user_id}/personalities/{personality_id}")
-# async def delete_personality(user_id: str, personality_id: str):
-#     pass
-
-
-# @app.put("/api/v1/users/{user_id}/personalities/{personality_id}")
-# async def update_personality(
-#     user_id: str, personality_id: str, payload: UserPersonality
-# ):
 #     pass
 
 

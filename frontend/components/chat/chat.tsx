@@ -295,10 +295,9 @@ export function Chat({
             {/* Context Explorer */}
             <ResizablePanel defaultSize={(screenSize.width >= 768) ? 30 : 0} minSize={(screenSize.width >= 768) ? 5 : 0}>
                 <div
-                    className={`hidden w-full h-full md:flex md:flex-col border-l p-4 overflow-y-auto bg-background transition-opacity duration-500 ${initialized ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
-                        }`}
+                    className={'hidden w-full h-full md:flex md:flex-col border-l p-4 overflow-y-auto bg-background transition-opacity duration-500'}
                 >
-                    {initialized && <ContextExplorer context={currentContext} />}
+                    <ContextExplorer context={currentContext} />
                 </div>
             </ResizablePanel>
         </ResizablePanelGroup >

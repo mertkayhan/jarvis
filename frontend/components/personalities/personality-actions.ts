@@ -81,52 +81,33 @@ interface DeletePersonalityResp {
     id: string
 }
 
-export async function deletePersonality(id: string) {
-    console.log("delete personality", id);
-    return await deletePersonalityHandler(id);
+export async function deletePersonality(userId:string, id: string) {
+    console.log("delete personality", id, userId);
+    const data = await callBackend({
+        endpoint: `/api/v1/users/${userId}/personalities/${id}`,
+        method: "DELETE"
+    });
+    return data as DeletePersonalityResp;
 }
 
-async function deletePersonalityHandler(id: string) {
-    try {
-        const res = await sql.begin((sql) => [
-            sql`
-            UPDATE common.personalities
-            SET deleted = true 
-            WHERE id = ${id}
-            RETURNING id
-            `
-        ]);
-        console.log("res:", res);
-        return { id: res[0][0].id } as DeletePersonalityResp;
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+interface UpdatePersonalityResp { 
+    id: string
 }
 
-interface UpdatePersonalityResp { }
-
-export async function updatePersonality(id: string, name: string, description: string, instructions: string, tools: string[], docs: string[], owner: string) {
+export async function updatePersonality(userId: string, id: string, name: string, description: string, instructions: string, tools: string[], docs: string[], owner: string) {
     console.log("update personality", id, name, description, instructions, tools, docs, owner);
-    return await updatePersonalityHandler(id, name, description, instructions, tools, docs, owner);
-}
-
-async function updatePersonalityHandler(id: string, name: string, description: string, instructions: string, tools: string[], docs: string[], owner: string) {
-    try {
-        const res = await sql.begin((sql) => [
-            sql`
-            UPDATE common.personalities
-            SET name = ${name}, instructions = ${instructions}, description = ${description}, tools = ${tools}, doc_ids = ${docs}, owner = ${owner}
-            WHERE id = ${id}
-            RETURNING id
-            `
-        ]);
-        console.log("res:", res);
-        return {} as UpdatePersonalityResp;
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+    const data = await callBackend({
+        endpoint: `/api/v1/users/${userId}/personalities/${id}`,
+        method: "PUT",
+        body: {
+            "name": name,
+            "instructions": instructions,
+            "description": description,
+            "tools": tools,
+            "doc_ids": docs,
+        }
+    });
+    return data as UpdatePersonalityResp;
 }
 
 interface MakePersonalityGlobalResp {

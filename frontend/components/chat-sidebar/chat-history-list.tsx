@@ -17,7 +17,6 @@ interface ChatListProps {
     setShowChatList: Dispatch<SetStateAction<boolean>>
     userId: string
     path: string
-    setLoadedChatHistory: Dispatch<SetStateAction<boolean>>
     id?: string | null
     dispatch: Dispatch<any>
 }
@@ -26,7 +25,6 @@ export function ChatHistoryList({
     setShowChatList,
     userId,
     path,
-    setLoadedChatHistory,
     id,
     dispatch,
 }: ChatListProps) {
@@ -43,11 +41,6 @@ export function ChatHistoryList({
             toast({ title: "Failed to list chats", variant: "destructive" });
         }
     }, [error]);
-    useEffect(() => {
-        if (data?.chats) {
-            setLoadedChatHistory(true);
-        }
-    }, [data]);
 
     const filteredChats = data?.chats.filter((c) => (c.title?.toLowerCase().includes(query.toLowerCase()) || !c.title)) || [];
 
