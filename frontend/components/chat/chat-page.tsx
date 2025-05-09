@@ -55,7 +55,6 @@ export default function ChatPage({
     const { defaultPersonality, defaultPersonalityLoading } = useDefaultPersonality(user?.email as string);
     const { defaultSystemPrompt, promptLoading } = useDefaultSystemPrompt(user?.email);
     const [selectedPersonality, setSelectedPersonality] = useState<Personality | undefined>(undefined);
-    const [loadedChatHistory, setLoadedChatHistory] = useState(false);
     const [chatGenerating, chatGeneratingDispatch] = useReducer<Reducer<Record<string, boolean>, any>>(chatGeneratingReducer, {});
 
     useEffect(() => {
@@ -63,9 +62,6 @@ export default function ChatPage({
             setSelectedPersonality((old) => (old !== defaultSystemPrompt) ? defaultPersonality : old);
         } else if (defaultSystemPrompt) {
             setSelectedPersonality((old) => (old !== defaultSystemPrompt) ? defaultSystemPrompt : old);
-        }
-        return () => {
-            setLoadedChatHistory(false);
         }
     }, [defaultPersonality, defaultSystemPrompt]);
 
@@ -98,7 +94,6 @@ export default function ChatPage({
                                 setShowChatList={setShowChatList}
                                 userId={user?.email as string}
                                 path={path}
-                                setLoadedChatHistory={setLoadedChatHistory}
                                 id={id}
                                 dispatch={dispatch}
                             />
@@ -107,22 +102,20 @@ export default function ChatPage({
                     <div
                         className="flex w-full h-full overflow-auto pl-0 animate-in duration-300 ease-in-out peer-[[data-state=open]]:lg:pl-[250px] peer-[[data-state=open]]:xl:pl-[300px]"
                     >
-                        {loadedChatHistory &&
-                            <Chat
-                                userId={user?.email as string}
-                                path={path}
-                                greeting={greeting}
-                                hasSystemPrompt
-                                defaultSystemPrompt={defaultSystemPrompt}
-                                selectedPersonality={selectedPersonality}
-                                setSelectedPersonality={setSelectedPersonality}
-                                socket={socket}
-                                id={id}
-                                dispatch={dispatch}
-                                isLoading={chatGenerating}
-                                setLoading={chatGeneratingDispatch}
-                            />
-                        }
+                        <Chat
+                            userId={user?.email as string}
+                            path={path}
+                            greeting={greeting}
+                            hasSystemPrompt
+                            defaultSystemPrompt={defaultSystemPrompt}
+                            selectedPersonality={selectedPersonality}
+                            setSelectedPersonality={setSelectedPersonality}
+                            socket={socket}
+                            id={id}
+                            dispatch={dispatch}
+                            isLoading={chatGenerating}
+                            setLoading={chatGeneratingDispatch}
+                        />
                     </div>
                 </div>
             </div>

@@ -30,6 +30,7 @@ export default function Page() {
             toast({ title: "Successfully created question pack" });
             setName("");
             setDescription("");
+            router.push("/chat");
         },
         onError: (error) => {
             console.error(error);
@@ -55,7 +56,7 @@ export default function Page() {
                 />
 
             </div>
-            <main className="container h-full dark:bg-slate-900 rounded-lg bg-slate-200">
+            <main className="container h-full rounded-lg">
                 <header className="p-2">
                     <h2 className="text-lg">New Question Pack</h2>
                 </header>
@@ -65,14 +66,13 @@ export default function Page() {
                         e.preventDefault();
                         const newId = uuidv4();
                         mutation.mutate(newId);
-                        router.push("/chat");
                     }}
                 >
                     <div className="w-full flex-grow flex flex-col space-y-4">
                         <div className="flex flex-col space-y-2 w-full">
                             <Label>Name</Label>
                             <Input
-                                className="w-full text-sm dark:border-indigo-300 border-slate-200"
+                                className="w-full text-sm"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                             />
@@ -80,7 +80,7 @@ export default function Page() {
                         <div className="flex flex-col space-y-2 w-full flex-grow">
                             <Label>Description</Label>
                             <textarea
-                                className="flex bg-transparent border resize-none w-full focus:outline-none p-2 text-sm rounded-lg dark:border-indigo-300 border-slate-200 h-full"
+                                className="flex bg-transparent border resize-none w-full focus:outline-none p-2 text-sm rounded-lg h-full"
                                 rows={4}
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
@@ -89,7 +89,7 @@ export default function Page() {
                     </div>
                     <div className="flex w-full">
                         <Button
-                            variant="secondary"
+                            variant="outline"
                             className="w-full"
                             type="submit"
                             disabled={description.trim().length === 0 || name.trim().length === 0}

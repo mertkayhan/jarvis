@@ -48,12 +48,7 @@ export function ChatWindow({
 
     return (
         <>
-            {!initialized &&
-                <div className='flex w-full h-full mx-auto my-auto items-center justify-center'>
-                    <HashLoader color="#94a3b8" />
-                </div>
-            }
-            {initialized && messages.length > 0 &&
+            {messages.length > 0 &&
                 (
                     <div className="flex flex-col flex-1 h-full">
                         <div className="flex-1 h-full" id='chat-container'>
@@ -72,7 +67,7 @@ export function ChatWindow({
                         </div>
                     </div>
                 )}
-            {initialized && messages.length === 0 &&
+            {messages.length === 0 &&
                 (
                     <div className="flex flex-col flex-1">
                         <div className="flex-1 overflow-y-auto overflow-x-auto" id='chat-container'>
