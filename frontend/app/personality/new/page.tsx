@@ -54,6 +54,7 @@ export default function Page() {
             setInstructions("");
             setGloballyAvailable(false);
             setIsDefault(false);
+            router.push("/chat");
         },
         onError: (error) => {
             console.error("Error creating personality:", error);
@@ -97,7 +98,6 @@ export default function Page() {
                             e.preventDefault();
                             // console.log("submit", name, description, instructions);
                             newPersonalityMutation.mutate();
-                            router.push("/chat");
                         }}
                     >
                         <>

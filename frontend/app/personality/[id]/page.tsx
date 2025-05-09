@@ -64,6 +64,7 @@ export default function Page() {
         mutationFn: async (personalityId: string) => {
             const newOwner = (globallyAvailable) ? "system" : (user?.email as string);
             await updatePersonality(
+                user?.email as string, 
                 personalityId,
                 currentName,
                 currentDescription,
@@ -81,6 +82,7 @@ export default function Page() {
         onSuccess: async () => {
             await queryClient.invalidateQueries(["listPersonalities", user?.email] as InvalidateQueryFilters);
             toast({ title: "Successfully updated personality" });
+            router.push("/chat");
         },
         onError: (error) => {
             console.error("Error updating personality:", error);
@@ -231,7 +233,6 @@ export default function Page() {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 updateMutation.mutate(personality?.id || "");
-                                router.push("/chat");
                             }}
                             className="flex w-full"
                         >

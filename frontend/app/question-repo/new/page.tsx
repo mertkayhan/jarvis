@@ -30,6 +30,7 @@ export default function Page() {
             toast({ title: "Successfully created question pack" });
             setName("");
             setDescription("");
+            router.push("/chat");
         },
         onError: (error) => {
             console.error(error);
@@ -65,7 +66,6 @@ export default function Page() {
                         e.preventDefault();
                         const newId = uuidv4();
                         mutation.mutate(newId);
-                        router.push("/chat");
                     }}
                 >
                     <div className="w-full flex-grow flex flex-col space-y-4">

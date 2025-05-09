@@ -54,6 +54,7 @@ export default function Page() {
                 return { packs: old?.packs.map((p) => (p.id === resp.id) ? { id: resp.id, description: resp.description, name: resp.name } : p) };
             });
             toast({ title: "Successfully updated question pack" });
+            router.push("/chat");
         },
         onError: (error) => {
             console.error("error updating question pack:", error);
@@ -123,7 +124,6 @@ export default function Page() {
                                     description: currentDescription,
                                     name: currentName
                                 } as DocumentPack);
-                                router.push("/chat");
                             }}
                             className="flex w-full"
                         >
