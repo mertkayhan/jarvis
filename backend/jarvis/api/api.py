@@ -17,7 +17,7 @@ from fastapi.security import HTTPBearer
 from psycopg import AsyncConnection
 from pydantic import BaseModel
 from jarvis.auth.auth import validate_token
-from jarvis.blob_storage import resolve_storage
+from jarvis.blob_storage import resolve_storage, storage
 from jarvis.chat.chat_title import create_chat_title
 from jarvis.db.db import get_connection_pool
 from jarvis.document_parsers.parser import resolve_parser
@@ -429,6 +429,101 @@ async def upload_document(
         return UploadResult(success=False, message="document processing failed")
 
 
+class UserDocument(BaseModel):
+    name: str
+    id: UUID
+    owner: str
+    href: str
+    pageCount: Optional[int] = None
+    tokenCount: Optional[int] = None
+    createdAt: datetime.datetime
+
+
+class UserDocuments(BaseModel):
+    docs: List[UserDocument]
+
+
+@app.get("/api/v1/users/{user_id}/docs", response_model=UserDocuments)
+async def get_user_docs(user_id: str, deleted: bool = False) -> UserDocuments:
+    query = """
+        SELECT 
+            document_id,
+            document_name,
+            num_pages,
+            num_tokens,
+            created_at 
+        FROM common.document_repo
+        WHERE owner = %(user_id)s AND deleted = %(deleted)s
+        ORDER BY updated_at DESC
+    """
+    try:
+        storage = resolve_storage()
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                resp = await cur.execute(
+                    query,
+                    {
+                        "user_id": user_id,
+                        "deleted": deleted,
+                    },
+                )
+                res = await resp.fetchall()
+                return UserDocuments(
+                    docs=[
+                        UserDocument(
+                            id=r["document_id"],
+                            name=r["document_name"],
+                            pageCount=r["num_pages"],
+                            tokenCount=r["num_tokens"],
+                            createdAt=r["created_at"],
+                            owner=user_id,
+                            href=storage.generate_presigned_url(
+                                f"raw/{user_id}/{r['document_id']}/{r['document_name']}"
+                            ),
+                        )
+                        for r in res
+                    ]
+                )
+
+    except Exception as err:
+        logger.error(f"failed to list user documents: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to list user documents, for more details please refer to the server logs",
+        )
+
+
+class DeleteDocumentResult(BaseModel):
+    id: UUID
+
+
+@app.delete(
+    "/api/v1/users/{user_id}/docs/{doc_id}", response_model=DeleteDocumentResult
+)
+async def delete_doc(user_id: str, doc_id: str) -> DeleteDocumentResult:
+    query = """
+        UPDATE common.document_repo
+        SET deleted = true
+        WHERE document_id = (%s)
+        RETURNING document_id
+    """
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.transaction():
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    resp = await cur.execute(query, (doc_id,))
+                    res = await resp.fetchall()
+                    return DeleteDocumentResult(id=res[0]["document_id"])
+    except Exception as err:
+        logger.error(f"failed to delete user document: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to delete document, please refer to the server logs for more details",
+        )
+
+
 class Question(BaseModel):
     question: str
 
@@ -656,6 +751,79 @@ async def get_question_pack_questions(
         )
 
 
+class UserModel(BaseModel):
+    model: str
+
+
+@app.get("/api/v1/users/{user_id}/model-selection", response_model=UserModel)
+async def get_user_model_selection(user_id: str):
+    query = """
+        SELECT 
+            model_name,
+            user_id
+        FROM common.model_selection 
+        WHERE user_id = (%s)
+    """
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                resp = await cur.execute(query, (user_id,))
+                res = await resp.fetchall()
+                return UserModel(model=res[0]["model_name"] if res else "automatic")
+    except Exception as err:
+        logger.error(f"failed to get user model: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to get user model, for more details please refer to the server logs",
+        )
+
+
+class UserModelSelection(BaseModel):
+    model_name: str
+
+
+class SetModelResult(BaseModel):
+    model: str
+
+
+@app.post("/api/v1/users/{user_id}/model-selection", response_model=SetModelResult)
+async def set_user_model_selection(
+    user_id: str, payload: UserModelSelection
+) -> SetModelResult:
+    query = """
+        INSERT INTO common.model_selection (
+            user_id, model_name
+        ) VALUES (
+            %(user_id)s, %(model_name)s
+        )
+        ON CONFLICT(user_id)
+        DO UPDATE 
+        SET model_name = EXCLUDED.model_name
+        RETURNING user_id, model_name
+    """
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.transaction():
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    resp = await cur.execute(
+                        query,
+                        {
+                            "user_id": user_id,
+                            "model_name": payload.model_name,
+                        },
+                    )
+                    res = await resp.fetchall()
+                    return SetModelResult(model=res[0]["model_name"])
+    except Exception as err:
+        logger.error(f"failed to update user model: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to update user model, please refer to server logs for further information",
+        )
+
+
 # @app.get("/api/v1/users/{user_id}/chats/{chat_id}/messages")
 # async def get_chat_messages(user_id: str, chat_id: str, deleted: bool = False):
 #     pass
@@ -701,30 +869,6 @@ async def get_question_pack_questions(
 
 # @app.delete("/api/v1/users/{user_id}/chats/{chat_id}/messages/{message_id}")
 # async def delete_message(user_id: str, chat_id: str, message_id: str):
-#     pass
-
-
-# @app.get("/api/v1/users/{user_id}/docs")
-# async def get_user_docs(user_id: str, deleted: bool = False):
-#     pass
-
-
-# @app.delete("/api/v1/users/{user_id}/docs/{doc_id}")
-# async def delete_doc(user_id: str, doc_id: str):
-#     pass
-
-
-# @app.get("/api/v1/users/{user_id}/model-selection")
-# async def get_user_model_selection(user_id: str):
-#     pass
-
-
-# class UserModelSelection(BaseModel):
-#     model_name: str
-
-
-# @app.post("/api/v1/users/{user_id}/model-selection")
-# async def set_user_model_selection(user_id: str, payload: UserModelSelection):
 #     pass
 
 
