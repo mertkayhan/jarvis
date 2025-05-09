@@ -17,7 +17,7 @@ from fastapi.security import HTTPBearer
 from psycopg import AsyncConnection
 from pydantic import BaseModel
 from jarvis.auth.auth import validate_token
-from jarvis.blob_storage.storage import resolve_storage
+from jarvis.blob_storage import resolve_storage
 from jarvis.chat.chat_title import create_chat_title
 from jarvis.db.db import get_connection_pool
 from jarvis.document_parsers.parser import resolve_parser
@@ -30,7 +30,7 @@ from jarvis.queries.query_handlers import (
 )
 from jarvis.question_pack.retriever import generate_embedding
 from jarvis.tools import ALL_AVAILABLE_TOOLS
-from models import ALL_SUPPORTED_MODELS
+from jarvis.models import ALL_SUPPORTED_MODELS
 from fastapi.responses import ORJSONResponse
 from dotenv import load_dotenv
 import logging
@@ -373,8 +373,6 @@ async def upload_document(
     # Input Validation: Missing input validation for user_id, upload_id, and fname can lead to injection attacks.
     # File Size Limits: Implement file size limits to prevent denial-of-service.
     # File Type Validation: Validate file content (e.g., using libmagic) to prevent malicious uploads, not just the extension.
-    # GCS Dependency: Tightly coupled to GCS. Abstract the storage mechanism for easier switching to other solutions.
-    # Stream the file end to end
 
     logger.info(f"received document {fileb.filename} for user {user_id}")
 

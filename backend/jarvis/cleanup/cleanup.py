@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from typing import List
-from jarvis.blob_storage.storage import resolve_storage
+from jarvis.blob_storage import resolve_storage
 from jarvis.db.db import get_connection_pool
 from psycopg.rows import dict_row, DictRow
 from dotenv import load_dotenv
@@ -53,7 +53,9 @@ async def clean_old_docs():
     for r in res:
         logger.info(f"deleting {r['document_name']}")
         storage.delete(f"raw/{r['owner']}/{r['document_id']}/{r['document_name']}")
-        storage.delete(f"parsed/{r['owner']}/{r['document_id']}/{r['document_name']}.md")
+        storage.delete(
+            f"parsed/{r['owner']}/{r['document_id']}/{r['document_name']}.md"
+        )
 
 
 async def clean_old_personalities():

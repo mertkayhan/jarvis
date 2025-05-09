@@ -1,7 +1,7 @@
 import io
 import gcsfs
 from os import getenv
-from jarvis.blob_storage.storage import resolve_storage
+from jarvis.blob_storage import resolve_storage
 from jarvis.document_parsers.type import ProcessingResult
 from jarvis.document_parsers.utils import count_tokens
 from dotenv import load_dotenv

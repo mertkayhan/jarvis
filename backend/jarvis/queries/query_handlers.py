@@ -5,7 +5,7 @@ import logging
 from uuid import uuid4
 from psycopg import AsyncConnection
 from psycopg.rows import dict_row
-from jarvis.blob_storage.storage import resolve_storage
+from jarvis.blob_storage import resolve_storage
 from jarvis.db.db import get_connection_pool
 from dotenv import load_dotenv
 
@@ -83,11 +83,13 @@ async def read_docs(ids: Sequence[str]) -> str:
             resp = await cur.execute(query, (list(ids),))
             res = await resp.fetchall()
 
-    storage= resolve_storage()
+    storage = resolve_storage()
     out = []
 
     for doc in res:
-        raw_content = storage.read(f"parsed/{doc['owner']}/{doc['document_id']}/{doc['document_name']}.md")
+        raw_content = storage.read(
+            f"parsed/{doc['owner']}/{doc['document_id']}/{doc['document_name']}.md"
+        )
         try:
             content = raw_content.decode("utf-8")
         except UnicodeDecodeError:

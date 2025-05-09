@@ -7,7 +7,7 @@ from vertexai.generative_models import GenerativeModel, Part, SafetySetting
 import logging
 import vertexai
 from google.api_core.exceptions import ResourceExhausted
-from jarvis.blob_storage.storage import resolve_storage
+from jarvis.blob_storage import resolve_storage
 from jarvis.document_parsers.type import ParseResult, ProcessingResult
 from jarvis.document_parsers.utils import count_tokens, merge_pages
 import vertexai.generative_models

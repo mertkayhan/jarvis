@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import logging
 import gcsfs
 from llama_parse import LlamaParse, ResultType
-from jarvis.blob_storage.storage import resolve_storage
+from jarvis.blob_storage import resolve_storage
 from jarvis.document_parsers.type import ParseResult, ProcessingResult
 from jarvis.document_parsers.utils import count_tokens, merge_pages
 import google.auth

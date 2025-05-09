@@ -38,10 +38,8 @@ from pathlib import Path
 import pandas as pd
 from graphrag.cli.query import _resolve_output_files
 from glob import glob
-# from jarvis.blob_storage.storage import must_list
 from dotenv import load_dotenv
-
-from jarvis.blob_storage.storage import resolve_storage
+from jarvis.blob_storage import resolve_storage
 
 load_dotenv()
 
@@ -132,7 +130,9 @@ async def index_documents(pack_id: str):
     # await sync_with_gcs(pack_id, bucket)
     logger.info("done")
     logger.info("generating graphrag config")
-    cfg = create_graphrag_config.create_graphrag_config(values=cfg_dict, root_dir=root.as_posix())
+    cfg = create_graphrag_config.create_graphrag_config(
+        values=cfg_dict, root_dir=root.as_posix()
+    )
     logger.info("done")
     logger.info("start building index")
     await build_index(cfg)
