@@ -16,4 +16,8 @@ def antrophic_model_resolver(model_name: str) -> ChatAnthropic:
         raise ValueError(
             f"unknown antrophic model  - supported models: {SUPPORTED_MODELS}"
         )
-    return ChatAnthropic(**SUPPORTED_MODELS[model_name], model=model_name)  # type: ignore
+    return ChatAnthropic(
+        **SUPPORTED_MODELS[model_name],
+        model=model_name,  # type: ignore
+        stream_usage=False,
+    )
