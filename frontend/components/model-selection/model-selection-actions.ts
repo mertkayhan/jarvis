@@ -1,7 +1,6 @@
 "use server"
 
 import { callBackend } from "@/lib/utils";
-import { getToken } from "../chat/chat-actions";
 
 interface GetAvailableModelsResp {
     models: { name: string, description: string }[]
@@ -12,6 +11,7 @@ export async function getAvailableModels(userId: string) {
         {
             endpoint: `/api/v1/users/${userId}/models`,
             method: "GET",
+            userId,
         }
     );
     return { models: data.models } as GetAvailableModelsResp;
@@ -26,6 +26,7 @@ export async function getUserModel(userId: string) {
     const data = await callBackend({
         endpoint: `/api/v1/users/${userId}/model-selection`,
         method: "GET",
+        userId,
     });
     return { modelName: data.model } as GetUserModelResp;
 
@@ -40,7 +41,8 @@ export async function setUserModel(userId: string, modelName: string) {
     const data = await callBackend({
         endpoint: `/api/v1/users/${userId}/model-selection`,
         method: "POST",
-        body: { "model_name": modelName }
+        body: { "model_name": modelName },
+        userId,
     });
     return { modelName: data.model } as SetUserModelResp;
 }

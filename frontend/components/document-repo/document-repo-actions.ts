@@ -1,7 +1,6 @@
 "use server"
 
 import { UserDocument } from "@/lib/types";
-import { getToken } from "../chat/chat-actions";
 import { callBackend } from "@/lib/utils";
 
 export interface ListDocumentsResp {
@@ -13,24 +12,28 @@ export async function listDocuments(userId: string) {
     const data = await callBackend(
         {
             endpoint: `/api/v1/users/${userId}/docs`,
-            method: "GET"
+            method: "GET",
+            userId,
         }
     );
-    return {docs: data?.docs.map((d: Record<string, any>) => {
-        return {...d, createdAt: new Date(d.createdAt)}
-    })} as ListDocumentsResp;
+    return {
+        docs: data?.docs.map((d: Record<string, any>) => {
+            return { ...d, createdAt: new Date(d.createdAt) }
+        })
+    } as ListDocumentsResp;
 }
 
 interface DeleteDocumentResp {
     id: string
 }
 
-export async function deleteDocument(userId:string, docId: string) {
+export async function deleteDocument(userId: string, docId: string) {
     console.log("delete document", docId);
     const data = await callBackend(
         {
             endpoint: `/api/v1/users/${userId}/docs/${docId}`,
             method: "DELETE",
+            userId,
         }
     );
     return data as DeleteDocumentResp;

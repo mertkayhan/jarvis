@@ -9,9 +9,10 @@ export async function autogenChatTitle(userId: string, chatId: string) {
         {
             endpoint: `/api/v1/users/${userId}/chats/${chatId}/title/autogen`,
             method: "PATCH",
+            userId,
         }
     );
-    return data as {title: string};
+    return data as { title: string };
 }
 
 export interface ListChatsResp {
@@ -24,14 +25,15 @@ export async function listChats(userId: string) {
         {
             endpoint: `/api/v1/users/${userId}/chats`,
             method: "GET",
+            userId,
         }
     );
     return {
         chats: data?.chats.map((c: Record<string, any>) => {
             return {
-                id: c.id, 
+                id: c.id,
                 userId: c["owner_email"],
-                title: c.title, 
+                title: c.title,
                 createdAt: c["created_at"],
                 updatedAt: c["updated_at"],
             } as UserChat;
@@ -45,6 +47,7 @@ export async function deleteChats(userId: string) {
         {
             endpoint: `/api/v1/users/${userId}/chats`,
             method: "DELETE",
+            userId,
         }
     );
 }
@@ -62,6 +65,7 @@ export async function updateChatTitle(chatId: string, userId: string, newTitle: 
             endpoint: `/api/v1/users/${userId}/chats/${chatId}/title`,
             method: "PATCH",
             body: { "new_title": newTitle },
+            userId,
         }
     );
     return { id: data["chat_id"], newTitle: data.title } as UpdateChatTitleResp;
@@ -77,6 +81,7 @@ export async function deleteChat(chatId: string, userId: string) {
         {
             endpoint: `/api/v1/users/${userId}/chats/${chatId}`,
             method: "DELETE",
+            userId,
         }
     );
     return data as DeleteChatResp;

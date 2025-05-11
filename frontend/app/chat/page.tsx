@@ -12,7 +12,7 @@ import { Reducer, useReducer } from "react";
 
 export default function Page() {
     const { user, error, isLoading } = useUser();
-    const token = useAuthToken();
+    const token = useAuthToken(user?.email);
     const socket = useSocket({ socketNamespace: "jarvis", userId: user?.email, token });
     const [id, dispatch] = useReducer<Reducer<string, any>>(chatIdReducer, uuidv4());
     const router = useRouter();

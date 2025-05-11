@@ -40,6 +40,7 @@ export async function getAvailableTools(userId: string) {
     const data = await callBackend({
         endpoint: `/api/v1/users/${userId}/tools`,
         method: "GET",
+        userId,
     });
     return { tools: data.tools };
 }
@@ -53,6 +54,7 @@ export async function listPersonalities(userId: string) {
     const data = await callBackend({
         endpoint: `/api/v1/users/${userId}/personalities`,
         method: "GET",
+        userId,
     });
     return data as ListPersonalitiesResp;
 }
@@ -72,7 +74,8 @@ export async function createPersonality(userId: string, name: string, descriptio
             "description": description,
             "tools": tools,
             "doc_ids": docIds,
-        }
+        },
+        userId,
     });
     return data as CreatePersonalityResp;
 }
@@ -81,16 +84,17 @@ interface DeletePersonalityResp {
     id: string
 }
 
-export async function deletePersonality(userId:string, id: string) {
+export async function deletePersonality(userId: string, id: string) {
     console.log("delete personality", id, userId);
     const data = await callBackend({
         endpoint: `/api/v1/users/${userId}/personalities/${id}`,
-        method: "DELETE"
+        method: "DELETE",
+        userId,
     });
     return data as DeletePersonalityResp;
 }
 
-interface UpdatePersonalityResp { 
+interface UpdatePersonalityResp {
     id: string
 }
 
@@ -105,7 +109,8 @@ export async function updatePersonality(userId: string, id: string, name: string
             "description": description,
             "tools": tools,
             "doc_ids": docs,
-        }
+        },
+        userId,
     });
     return data as UpdatePersonalityResp;
 }

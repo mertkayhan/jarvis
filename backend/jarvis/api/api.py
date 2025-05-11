@@ -5,19 +5,15 @@ import os
 from typing import Annotated, Any, Dict, List, Optional
 from uuid import UUID, uuid4
 from fastapi import (
-    Depends,
     FastAPI,
     Form,
-    Request,
     HTTPException,
     Query,
     UploadFile,
 )
-from fastapi.security import HTTPBearer
 from psycopg import AsyncConnection
 from pydantic import BaseModel
-from jarvis.auth.auth import validate_token
-from jarvis.blob_storage import resolve_storage, storage
+from jarvis.blob_storage import resolve_storage
 from jarvis.chat.chat_title import create_chat_title
 from jarvis.db.db import get_connection_pool
 from jarvis.document_parsers.parser import resolve_parser
@@ -36,52 +32,20 @@ from dotenv import load_dotenv
 import logging
 from psycopg.rows import dict_row
 from fastapi.middleware.cors import CORSMiddleware
+from jarvis.api.middleware import *
 
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-
-class JWTBearer(HTTPBearer):
-    def __init__(self, auto_error: bool = True):
-        super(JWTBearer, self).__init__(auto_error=auto_error)
-
-    async def __call__(self, request: Request):
-        credentials = await super(JWTBearer, self).__call__(request)
-        if credentials:
-            if not credentials.scheme == "Bearer":
-                raise HTTPException(
-                    status_code=403, detail="Invalid authentication scheme."
-                )
-            if not self.verify_jwt(credentials.credentials):
-                raise HTTPException(
-                    status_code=403, detail="Invalid token or expired token."
-                )
-            return credentials
-        else:
-            raise HTTPException(status_code=403, detail="Invalid authorization code.")
-
-    def verify_jwt(self, token: str) -> bool:
-        try:
-            validate_token(token)
-            return True
-        except Exception as err:
-            logger.error(f"failed to validate bearer token: {err}", exc_info=True)
-            return False
-
-
 app = FastAPI(
     title="Jarvis",
     version="0.0.1",
     default_response_class=ORJSONResponse,
-    dependencies=[Depends(JWTBearer())],
 )
 
-origins = []
-if os.getenv("CORS_ALLOWED_ORIGINS"):
-    origins = os.getenv("CORS_ALLOWED_ORIGINS").split(";")
-
+origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(";")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -89,6 +53,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
+app.add_middleware(RequestIDMiddleware)
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(ErrorHandlingMiddleware)
+app.add_middleware(AuthMiddleware)
 
 
 class AIModel(BaseModel):

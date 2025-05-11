@@ -40,7 +40,7 @@ export function UploadButton({ uploadRunning, userId, setUploadRunning }: Upload
     const [processingMode, setProcessingMode] = useState("accurate");
     const { toast } = useToast();
     const queryClient = useQueryClient();
-    const token = useAuthToken();
+    const token = useAuthToken(userId);
     const backendUrl = useBackendUrl();
 
     const uploadMutation = useMutation({
@@ -264,7 +264,7 @@ export function DeleteButton({ id, userId }: DeleteButtonProps) {
                     }}
                     disabled={mutation.isPending}
                 >
-                    {!mutation.isPending && 
+                    {!mutation.isPending &&
                         <svg
                             className="w-4 h-4"
                             viewBox="0 0 15 15"

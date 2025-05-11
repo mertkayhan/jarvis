@@ -84,7 +84,7 @@ export default function Page() {
     const [workflowStage, setWorkflowStage] = useState<Workflow>(Workflow.Upload);
     const [selectedSnippet, setSelectedSnippet] = useState<Sources | null>(null);
     const [snippetDialogOpen, setSnippetDialogOpen] = useState(false);
-    const token = useAuthToken();
+    const token = useAuthToken(user?.email);
     const socket = useSocket({ socketNamespace: 'jarvis', userId: user?.email, token: token });
     const readFileContent = (file: File): Promise<ReadResp> => {
         return new Promise((resolve, reject) => {

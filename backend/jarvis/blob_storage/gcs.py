@@ -58,7 +58,7 @@ class GCS(Storage):
     def generate_presigned_url(self, blob: Union[Blob, str]) -> str:
         r = requests.Request()
         self.creds.refresh(r)
-        service_account_email = getattr(self.creds, "service_account_email")
+        service_account_email = getattr(self.creds, "service_account_email", None)
         if not service_account_email:
             logger.warning("service account email is empty!")
 

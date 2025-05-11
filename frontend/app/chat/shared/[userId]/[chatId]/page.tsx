@@ -15,7 +15,7 @@ import { getDefaultSystemPrompt } from '@/components/chat/chat-actions';
 export default function Page() {
     const params = useParams<{ userId: string; chatId: string }>();
     const id = params?.chatId;
-    const token = useAuthToken();
+    const token = useAuthToken(params.userId);
     const [userId, setUserId] = useState<string | null>(null);
     const socket = useSocket({ socketNamespace: "jarvis", userId: userId, token });
     const [chatGenerating, chatGeneratingDispatch] = useReducer<Reducer<Record<string, boolean>, any>>(chatGeneratingReducer, {});

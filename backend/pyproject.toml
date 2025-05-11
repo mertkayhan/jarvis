@@ -8,7 +8,6 @@ version = "0.0.1"
 [tool.poetry.dependencies]
 PyMuPDF = "==1.25.3"
 aiohttp = "==3.11.13"
-auth0-python = "==4.8.1"
 eventlet = "==0.35.2"
 fastapi = { version = "==0.115.12", extras = ["standard"] }
 gcsfs = "==2024.10.0"
