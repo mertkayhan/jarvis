@@ -51,6 +51,7 @@ export default function Page() {
                 return { packs: old.packs.map((p) => (p.id === resp.id) ? { id: resp.id, description: resp.description, name: resp.name } : p) };
             });
             toast({ title: "Successfully updated question pack" });
+            router.push("/chat");
         },
         onError: (error) => {
             console.error("error updating question pack:", error);
@@ -77,7 +78,7 @@ export default function Page() {
                 />
 
             </div>
-            <main className="container h-full dark:bg-slate-900 rounded-lg bg-slate-200">
+            <main className="container h-ful rounded-lg">
                 <header className="py-4">
                     <h2 className="text-lg">Edit {pack?.name}</h2>
                     <span className="text-sm text-slate-400 dark:text-slate-500">
@@ -99,18 +100,19 @@ export default function Page() {
                         onChange={(e) => setCurrentDescription(e.target.value)}
                     />
                 </div>
-                <div className="flex flex-col w-full gap-y-2 pb-4">
+                <div className="flex w-full gap-x-4 pt-4">
                     <Button
                         variant="destructive"
                         onClick={() => {
                             reset();
                         }}
                         disabled={updateMutation.isPending}
+                        className="flex w-full"
                     >
                         Cancel
                     </Button>
                     <Button
-                        variant="secondary"
+                        variant="outline"
                         disabled={updateMutation.isPending}
                         onClick={(e) => {
                             e.preventDefault();
@@ -120,8 +122,8 @@ export default function Page() {
                                 description: currentDescription,
                                 name: currentName
                             } as QuestionPack);
-                            router.push("/chat");
                         }}
+                        className="flex w-full"
                     >
                         {updateMutation.isPending && <IconSpinner className="mr-2 animate-spin" />}
                         Save

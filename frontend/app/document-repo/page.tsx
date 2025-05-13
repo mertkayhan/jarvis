@@ -84,7 +84,7 @@ export default function Page() {
     const [workflowStage, setWorkflowStage] = useState<Workflow>(Workflow.Upload);
     const [selectedSnippet, setSelectedSnippet] = useState<Sources | null>(null);
     const [snippetDialogOpen, setSnippetDialogOpen] = useState(false);
-    const token = useAuthToken();
+    const token = useAuthToken(user?.email);
     const socket = useSocket({ socketNamespace: 'jarvis', userId: user?.email, token: token });
     const readFileContent = (file: File): Promise<ReadResp> => {
         return new Promise((resolve, reject) => {
@@ -117,7 +117,7 @@ export default function Page() {
             formData.append("mode", "fast");
             formData.append("module", "document_pack");
             formData.append("pack_id", params.get("pack_id") as string);
-            const resp = await fetch(`${backendUrl}/api/v1/users/${user?.email}/uploads/document`, {
+            const resp = await fetch(`${backendUrl}/api/v1/uploads/document`, {
                 method: "POST",
                 headers: { "Authorization": `Bearer ${token}` },
                 body: formData

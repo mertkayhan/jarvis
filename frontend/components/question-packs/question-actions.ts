@@ -33,9 +33,9 @@ export async function listQuestions(userId: string, packId: string, offset: numb
 
 async function listQuestionsHandler(userId: string, packId: string, offset: number, filters: QuestionFilter | null, searchQuery: string | null) {
     const backendUrl = process.env.BACKEND_URL;
-    const token = await getToken();
+    const token = await getToken(userId);
     const batchSize = 10;
-    let baseUrl = `${backendUrl}/api/v1/users/${userId}/question-packs/${packId}/questions?offset=${offset}&limit=${batchSize}`;
+    let baseUrl = `${backendUrl}/api/v1/question-packs/${packId}/questions?offset=${offset}&limit=${batchSize}`;
     if (searchQuery) {
         baseUrl += `&search_query=${encodeURIComponent(searchQuery)}`;
     }
@@ -84,9 +84,9 @@ export async function createQuestion(packId: string, question: string, userId: s
 
 async function createQuestionHandler(packId: string, question: string, userId: string) {
     const backendUrl = process.env.BACKEND_URL;
-    const token = await getToken();
+    const token = await getToken(userId);
     const resp = await fetch(
-        `${backendUrl}/api/v1/users/${userId}/question-packs/${packId}/questions`,
+        `${backendUrl}/api/v1/question-packs/${packId}/questions`,
         {
             method: "POST",
             headers: {

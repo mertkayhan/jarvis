@@ -2,6 +2,7 @@
 
 import { Message, Personality } from "@/lib/types";
 import postgres from "postgres";
+import jwt from "jsonwebtoken";
 
 const uri = process.env.DB_URI || "unknown";
 const sql = postgres(uri, { connection: { application_name: "Jarvis" } });
@@ -9,41 +10,37 @@ const sql = postgres(uri, { connection: { application_name: "Jarvis" } });
 let cachedToken: string | null = null;
 let tokenExpiryTime = 0;
 
-export async function getToken() {
-    if (cachedToken && Date.now() < tokenExpiryTime) {
-        return cachedToken;
+export async function getToken(userId: string) {
+    const secret = process.env.AUTH0_SECRET;
+    if (!secret) {
+        throw new Error("AUTH0_SECRET is not set!");
     }
-    try {
-        const response = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/oauth/token`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                client_id: process.env.AUTH0_API_CLIENT_ID,
-                client_secret: process.env.AUTH0_API_CLIENT_SECRET,
-                audience: process.env.AUTH0_API_AUDIENCE,
-                grant_type: 'client_credentials'
-            })
-        });
-        if (!response.ok) {
-            throw new Error(`Auth0 token request failed: ${response.statusText}`);
-        }
-        const data = await response.json();
-        tokenExpiryTime = Date.now() + (data.expires_in * 1000) - 60000;
-        cachedToken = data["access_token"];
-        return data["access_token"] as string;
-    } catch (error) {
-        console.error('Error in getToken:', error);
-        throw error;
+    if (cachedToken && Math.floor(Date.now()) < tokenExpiryTime) {
+        return cachedToken;
+    } else {
+        const expiration = Math.floor(Date.now() / 1000) + 3600;
+        tokenExpiryTime = expiration - 60;
+        const claims = {
+            sub: userId,
+            role: "user",  // TODO:
+            iat: Math.floor(Date.now() / 1000),
+            aud: process.env.AUTH0_API_AUDIENCE,
+            exp: expiration,
+            iss: process.env.AUTH0_BASE_URL,
+            jti: crypto.randomUUID(),
+            nbf: Math.floor(Date.now() / 1000) - 1,
+        };
+        const token = jwt.sign(claims, secret, { algorithm: "HS256" });
+        cachedToken = token;
+        return token;
     }
 }
 
 export async function getDefaultSystemPrompt(userId: string) {
     const backendUrl = process.env.BACKEND_URL;
-    const token = await getToken();
+    const token = await getToken(userId);
     const resp = await fetch(
-        `${backendUrl}/api/v1/users/${userId}/default-prompt`,
+        `${backendUrl}/api/v1/default-prompt`,
         {
             method: "GET",
             headers: { "Authorization": `Bearer ${token}` }
