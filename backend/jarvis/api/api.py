@@ -9,6 +9,7 @@ from fastapi import (
     Form,
     HTTPException,
     Query,
+    Request,
     UploadFile,
 )
 from psycopg import AsyncConnection
@@ -78,11 +79,12 @@ class SystemPrompt(BaseModel):
 
 
 @app.get(
-    "/api/v1/users/{user_id}/default-prompt",
+    "/api/v1/default-prompt",
     response_model=SystemPrompt,
 )
-async def get_default_system_prompt(user_id: str) -> SystemPrompt:
-    # TODO: return user system prompt
+async def get_default_system_prompt(req: Request) -> SystemPrompt:
+    user_id: str = req.state.claims["sub"]
+    logger.info(f"{user_id} is requesting the default system prompt")
     return SystemPrompt(
         name="default",
         description="This is the default system prompt for Jarvis.",
@@ -126,10 +128,10 @@ class AutoGenChatTitle(BaseModel):
 
 
 @app.patch(
-    "/api/v1/users/{user_id}/chats/{chat_id}/title/autogen",
+    "/api/v1/chats/{chat_id}/title/autogen",
     response_model=AutoGenChatTitle,
 )
-async def generate_chat_title(user_id: str, chat_id: str) -> AutoGenChatTitle:
+async def generate_chat_title(chat_id: str) -> AutoGenChatTitle:
     try:
         [chat_model, history] = await asyncio.gather(
             get_chat_model(chat_id), get_message_history(chat_id)
@@ -158,8 +160,9 @@ class UserChats(BaseModel):
     chats: List[UserChat]
 
 
-@app.get("/api/v1/users/{user_id}/chats")
-async def get_all_user_chats(user_id: str, deleted: bool = False):
+@app.get("/api/v1/chats", response_model=UserChats)
+async def get_all_user_chats(req: Request, deleted: bool = False) -> UserChats:
+    user_id: str = req.state.claims["sub"]
     query = """
         SELECT 
             id,
@@ -196,8 +199,9 @@ class DeletedChats(BaseModel):
     id: List[str]
 
 
-@app.delete("/api/v1/users/{user_id}/chats")
-async def delete_all_user_chats(user_id: str):
+@app.delete("/api/v1//chats", response_model=DeletedChats)
+async def delete_all_user_chats(req: Request) -> DeletedChats:
+    user_id: str = req.state.claims["sub"]
     query = """
         UPDATE common.chat_history 
         SET deleted = true 
@@ -224,8 +228,8 @@ class DeleteChatResult(BaseModel):
     id: UUID
 
 
-@app.delete("/api/v1/users/{user_id}/chats/{chat_id}", response_model=DeleteChatResult)
-async def delete_chat(user_id: str, chat_id: str) -> DeleteChatResult:
+@app.delete("/api/v1/chats/{chat_id}", response_model=DeleteChatResult)
+async def delete_chat(chat_id: str) -> DeleteChatResult:
     query = """
         UPDATE common.chat_history 
         SET deleted = true 
@@ -258,11 +262,11 @@ class ChatTitleUpdateResult(BaseModel):
 
 
 @app.patch(
-    "/api/v1/users/{user_id}/chats/{chat_id}/title",
+    "/api/v1/chats/{chat_id}/title",
     response_model=ChatTitleUpdateResult,
 )
 async def update_user_chat_title(
-    user_id: str, chat_id: str, payload: ChatTitleUpdate
+    chat_id: str, payload: ChatTitleUpdate
 ) -> ChatTitleUpdateResult:
     query = """
         UPDATE common.chat_history
@@ -297,12 +301,10 @@ async def update_user_chat_title(
 
 
 @app.get(
-    "/api/v1/users/{user_id}/models",
+    "/api/v1/models",
     response_model=UserModels,
 )
-async def get_available_models(
-    user_id: str,
-) -> UserModels:
+async def get_available_models() -> UserModels:
     return UserModels(
         models=[AIModel(name=model_name) for model_name in ALL_SUPPORTED_MODELS]
         + [AIModel(name="automatic")]
@@ -313,8 +315,8 @@ class ToolSet(BaseModel):
     tools: list[str]
 
 
-@app.get("/api/v1/users/{user_id}/tools", response_model=ToolSet)
-async def get_available_tools(user_id: str) -> ToolSet:
+@app.get("/api/v1/tools", response_model=ToolSet)
+async def get_available_tools() -> ToolSet:
     return ToolSet(tools=ALL_AVAILABLE_TOOLS)
 
 
@@ -327,11 +329,11 @@ class UploadResult(BaseModel):
 
 
 @app.post(
-    "/api/v1/users/{user_id}/uploads/document",
+    "/api/v1/uploads/document",
     response_model=UploadResult,
 )
 async def upload_document(
-    user_id: str,
+    req: Request,
     fileb: UploadFile,
     upload_id: Annotated[str, Form()],
     mode: Annotated[str, Form()],
@@ -344,6 +346,7 @@ async def upload_document(
     # File Size Limits: Implement file size limits to prevent denial-of-service.
     # File Type Validation: Validate file content (e.g., using libmagic) to prevent malicious uploads, not just the extension.
 
+    user_id: str = req.state.claims["sub"]
     logger.info(f"received document {fileb.filename} for user {user_id}")
 
     try:
@@ -413,8 +416,9 @@ class UserDocuments(BaseModel):
     docs: List[UserDocument]
 
 
-@app.get("/api/v1/users/{user_id}/docs", response_model=UserDocuments)
-async def get_user_docs(user_id: str, deleted: bool = False) -> UserDocuments:
+@app.get("/api/v1/docs", response_model=UserDocuments)
+async def get_user_docs(req: Request, deleted: bool = False) -> UserDocuments:
+    user_id: str = req.state.claims["sub"]
     query = """
         SELECT 
             document_id,
@@ -468,10 +472,8 @@ class DeleteDocumentResult(BaseModel):
     id: UUID
 
 
-@app.delete(
-    "/api/v1/users/{user_id}/docs/{doc_id}", response_model=DeleteDocumentResult
-)
-async def delete_doc(user_id: str, doc_id: str) -> DeleteDocumentResult:
+@app.delete("/api/v1/docs/{doc_id}", response_model=DeleteDocumentResult)
+async def delete_doc(doc_id: str) -> DeleteDocumentResult:
     query = """
         UPDATE common.document_repo
         SET deleted = true
@@ -503,8 +505,14 @@ class CreateQuestionResp(BaseModel):
     question: str
 
 
-@app.post("/api/v1/users/{user_id}/question-packs/{question_pack_id}/questions")
-async def create_question(user_id: str, question_pack_id: str, payload: Question):
+@app.post(
+    "/api/v1/question-packs/{question_pack_id}/questions",
+    response_model=CreateQuestionResp,
+)
+async def create_question(
+    req: Request, question_pack_id: str, payload: Question
+) -> CreateQuestionResp:
+    user_id: str = req.state.claims["sub"]
     query = """
         INSERT INTO common.question_pairs(
             id, pack_id, question, updated_by, answer, question_embedding
@@ -562,9 +570,8 @@ class QuestionList(BaseModel):
     maxPageNo: int
 
 
-@app.get("/api/v1/users/{user_id}/question-packs/{question_pack_id}/questions")
+@app.get("/api/v1/question-packs/{question_pack_id}/questions")
 async def get_question_pack_questions(
-    user_id: str,
     question_pack_id: str,
     offset: int = 0,
     limit: int = 10,
@@ -725,8 +732,9 @@ class UserModel(BaseModel):
     model: str
 
 
-@app.get("/api/v1/users/{user_id}/model-selection", response_model=UserModel)
-async def get_user_model_selection(user_id: str):
+@app.get("/api/v1/model-selection", response_model=UserModel)
+async def get_user_model_selection(req: Request) -> UserModel:
+    user_id: str = req.state.claims["sub"]
     query = """
         SELECT 
             model_name,
@@ -757,10 +765,12 @@ class SetModelResult(BaseModel):
     model: str
 
 
-@app.post("/api/v1/users/{user_id}/model-selection", response_model=SetModelResult)
+@app.post("/api/v1/model-selection", response_model=SetModelResult)
 async def set_user_model_selection(
-    user_id: str, payload: UserModelSelection
+    req: Request,
+    payload: UserModelSelection,
 ) -> SetModelResult:
+    user_id: str = req.state.claims["sub"]
     query = """
         INSERT INTO common.model_selection (
             user_id, model_name
@@ -809,8 +819,9 @@ class Personalities(BaseModel):
     personalities: List[Personality]
 
 
-@app.get("/api/v1/users/{user_id}/personalities", response_model=Personalities)
-async def get_user_personalities(user_id: str) -> Personalities:
+@app.get("/api/v1/personalities", response_model=Personalities)
+async def get_user_personalities(req: Request) -> Personalities:
+    user_id: str = req.state.claims["sub"]
     # TODO: This needs to be a join!
     list_query = """
         SELECT 
@@ -873,8 +884,11 @@ class CreatePersonalityResult(BaseModel):
     id: UUID
 
 
-@app.post("/api/v1/users/{user_id}/personalities")
-async def create_personality(user_id: str, payload: Personality):
+@app.post("/api/v1/personalities", response_model=CreatePersonalityResult)
+async def create_personality(
+    req: Request, payload: Personality
+) -> CreatePersonalityResult:
+    user_id: str = req.state.claims["sub"]
     query = """
         INSERT INTO common.personalities (
             id, instructions, name, owner, description, tools, doc_ids
@@ -916,12 +930,10 @@ class DeletePersonalityResult(BaseModel):
 
 
 @app.delete(
-    "/api/v1/users/{user_id}/personalities/{personality_id}",
+    "/api/v1/personalities/{personality_id}",
     response_model=DeletePersonalityResult,
 )
-async def delete_personality(
-    user_id: str, personality_id: str
-) -> DeletePersonalityResult:
+async def delete_personality(personality_id: str) -> DeletePersonalityResult:
     query = """
         UPDATE common.personalities
         SET deleted = true 
@@ -948,8 +960,14 @@ class UpdatePersonalityResult(BaseModel):
     id: UUID
 
 
-@app.put("/api/v1/users/{user_id}/personalities/{personality_id}")
-async def update_personality(user_id: str, personality_id: str, payload: Personality):
+@app.put(
+    "/api/v1/personalities/{personality_id}",
+    response_model=UpdatePersonalityResult,
+)
+async def update_personality(
+    req: Request, personality_id: str, payload: Personality
+) -> UpdatePersonalityResult:
+    user_id: str = req.state.claims["sub"]
     query = """
         UPDATE common.personalities
         SET name = %(name)s, instructions = %(instructions)s, description = %(description)s, tools = %(tools)s, doc_ids = %(docs)s, owner = %(owner)s
