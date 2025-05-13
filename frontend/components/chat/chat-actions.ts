@@ -40,7 +40,7 @@ export async function getDefaultSystemPrompt(userId: string) {
     const backendUrl = process.env.BACKEND_URL;
     const token = await getToken(userId);
     const resp = await fetch(
-        `${backendUrl}/api/v1/users/${userId}/default-prompt`,
+        `${backendUrl}/api/v1/default-prompt`,
         {
             method: "GET",
             headers: { "Authorization": `Bearer ${token}` }

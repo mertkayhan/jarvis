@@ -117,7 +117,7 @@ export default function Page() {
             formData.append("mode", "fast");
             formData.append("module", "document_pack");
             formData.append("pack_id", params.get("pack_id") as string);
-            const resp = await fetch(`${backendUrl}/api/v1/users/${user?.email}/uploads/document`, {
+            const resp = await fetch(`${backendUrl}/api/v1/uploads/document`, {
                 method: "POST",
                 headers: { "Authorization": `Bearer ${token}` },
                 body: formData

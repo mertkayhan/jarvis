@@ -59,7 +59,7 @@ export function UploadButton({ uploadRunning, userId, setUploadRunning }: Upload
             formData.append("mode", processingMode);
             formData.append("module", "document_repo");
 
-            const resp = await fetch(`${backendUrl}/api/v1/users/${userId}/uploads/document`, {
+            const resp = await fetch(`${backendUrl}/api/v1/uploads/document`, {
                 method: "POST",
                 headers: { "Authorization": `Bearer ${token}` },
                 body: formData

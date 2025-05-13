@@ -11,7 +11,7 @@ export async function listDocuments(userId: string) {
     console.log("list documents", userId);
     const data = await callBackend(
         {
-            endpoint: `/api/v1/users/${userId}/docs`,
+            endpoint: `/api/v1/docs`,
             method: "GET",
             userId,
         }
@@ -31,7 +31,7 @@ export async function deleteDocument(userId: string, docId: string) {
     console.log("delete document", docId);
     const data = await callBackend(
         {
-            endpoint: `/api/v1/users/${userId}/docs/${docId}`,
+            endpoint: `/api/v1/docs/${docId}`,
             method: "DELETE",
             userId,
         }

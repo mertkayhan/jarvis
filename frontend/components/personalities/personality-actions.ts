@@ -38,7 +38,7 @@ export async function getPersonality(id: string, userId: string) {
 
 export async function getAvailableTools(userId: string) {
     const data = await callBackend({
-        endpoint: `/api/v1/users/${userId}/tools`,
+        endpoint: `/api/v1/tools`,
         method: "GET",
         userId,
     });
@@ -52,7 +52,7 @@ export interface ListPersonalitiesResp {
 export async function listPersonalities(userId: string) {
     console.log("list personalities", userId);
     const data = await callBackend({
-        endpoint: `/api/v1/users/${userId}/personalities`,
+        endpoint: `/api/v1/personalities`,
         method: "GET",
         userId,
     });
@@ -66,7 +66,7 @@ interface CreatePersonalityResp {
 export async function createPersonality(userId: string, name: string, description: string, instructions: string, owner: string, tools: string[], docIds: string[]) {
     console.log("create personality", userId, name, description, instructions, owner, tools, docIds);
     const data = await callBackend({
-        endpoint: `/api/v1/users/${userId}/personalities`,
+        endpoint: `/api/v1/personalities`,
         method: "POST",
         body: {
             "instructions": instructions,
@@ -87,7 +87,7 @@ interface DeletePersonalityResp {
 export async function deletePersonality(userId: string, id: string) {
     console.log("delete personality", id, userId);
     const data = await callBackend({
-        endpoint: `/api/v1/users/${userId}/personalities/${id}`,
+        endpoint: `/api/v1/personalities/${id}`,
         method: "DELETE",
         userId,
     });
@@ -101,7 +101,7 @@ interface UpdatePersonalityResp {
 export async function updatePersonality(userId: string, id: string, name: string, description: string, instructions: string, tools: string[], docs: string[], owner: string) {
     console.log("update personality", id, name, description, instructions, tools, docs, owner);
     const data = await callBackend({
-        endpoint: `/api/v1/users/${userId}/personalities/${id}`,
+        endpoint: `/api/v1/personalities/${id}`,
         method: "PUT",
         body: {
             "name": name,

@@ -1,11 +1,14 @@
 import { getToken } from "@/components/chat/chat-actions";
 import { useEffect, useRef, useState } from "react";
 
-export function useAuthToken(userId: string) {
+export function useAuthToken(userId: string | null | undefined) {
     const [token, setToken] = useState<string | null>(null);
     const isMounted = useRef(true);
 
     async function fetchToken() {
+        if (!userId) {
+            return;
+        }
         console.log("Fetching token...");
         try {
             const newToken = await getToken(userId);
@@ -17,6 +20,9 @@ export function useAuthToken(userId: string) {
     }
 
     useEffect(() => {
+        if (!userId) {
+            return;
+        }
         isMounted.current = true;
         fetchToken();
 

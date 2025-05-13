@@ -9,7 +9,7 @@ interface GetAvailableModelsResp {
 export async function getAvailableModels(userId: string) {
     const data = await callBackend(
         {
-            endpoint: `/api/v1/users/${userId}/models`,
+            endpoint: `/api/v1/models`,
             method: "GET",
             userId,
         }
@@ -24,7 +24,7 @@ interface GetUserModelResp {
 export async function getUserModel(userId: string) {
     console.log("get user model:", userId);
     const data = await callBackend({
-        endpoint: `/api/v1/users/${userId}/model-selection`,
+        endpoint: `/api/v1/model-selection`,
         method: "GET",
         userId,
     });
@@ -39,7 +39,7 @@ interface SetUserModelResp {
 export async function setUserModel(userId: string, modelName: string) {
     console.log("set user model", userId, modelName);
     const data = await callBackend({
-        endpoint: `/api/v1/users/${userId}/model-selection`,
+        endpoint: `/api/v1/model-selection`,
         method: "POST",
         body: { "model_name": modelName },
         userId,

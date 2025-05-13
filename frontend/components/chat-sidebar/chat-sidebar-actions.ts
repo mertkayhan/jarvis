@@ -7,7 +7,7 @@ export async function autogenChatTitle(userId: string, chatId: string) {
     console.log("autogen title", userId, chatId);
     const data = await callBackend(
         {
-            endpoint: `/api/v1/users/${userId}/chats/${chatId}/title/autogen`,
+            endpoint: `/api/v1/chats/${chatId}/title/autogen`,
             method: "PATCH",
             userId,
         }
@@ -23,7 +23,7 @@ export async function listChats(userId: string) {
     console.log("listing chats", userId);
     const data = await callBackend(
         {
-            endpoint: `/api/v1/users/${userId}/chats`,
+            endpoint: `/api/v1/chats`,
             method: "GET",
             userId,
         }
@@ -45,7 +45,7 @@ export async function deleteChats(userId: string) {
     console.log("delete chats", userId);
     await callBackend(
         {
-            endpoint: `/api/v1/users/${userId}/chats`,
+            endpoint: `/api/v1/chats`,
             method: "DELETE",
             userId,
         }
@@ -62,7 +62,7 @@ export async function updateChatTitle(chatId: string, userId: string, newTitle: 
     console.log("update chat title", userId, chatId, newTitle)
     const data = await callBackend(
         {
-            endpoint: `/api/v1/users/${userId}/chats/${chatId}/title`,
+            endpoint: `/api/v1/chats/${chatId}/title`,
             method: "PATCH",
             body: { "new_title": newTitle },
             userId,
@@ -79,7 +79,7 @@ export async function deleteChat(chatId: string, userId: string) {
     console.log("delete chat", chatId, userId);
     const data = await callBackend(
         {
-            endpoint: `/api/v1/users/${userId}/chats/${chatId}`,
+            endpoint: `/api/v1/chats/${chatId}`,
             method: "DELETE",
             userId,
         }
