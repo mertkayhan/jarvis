@@ -11,7 +11,7 @@ export async function listDocuments(userId: string) {
     console.log("list documents", userId);
     const data = await callBackend(
         {
-            endpoint: `/api/v1/docs`,
+            endpoint: `/api/v1/docs/`,
             method: "GET",
             userId,
         }

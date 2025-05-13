@@ -23,7 +23,7 @@ export async function listChats(userId: string) {
     console.log("listing chats", userId);
     const data = await callBackend(
         {
-            endpoint: `/api/v1/chats`,
+            endpoint: `/api/v1/chats/`,
             method: "GET",
             userId,
         }
@@ -45,7 +45,7 @@ export async function deleteChats(userId: string) {
     console.log("delete chats", userId);
     await callBackend(
         {
-            endpoint: `/api/v1/chats`,
+            endpoint: `/api/v1/chats/`,
             method: "DELETE",
             userId,
         }
@@ -79,7 +79,7 @@ export async function deleteChat(chatId: string, userId: string) {
     console.log("delete chat", chatId, userId);
     const data = await callBackend(
         {
-            endpoint: `/api/v1/chats/${chatId}`,
+            endpoint: `/api/v1//chats/${chatId}`,
             method: "DELETE",
             userId,
         }
