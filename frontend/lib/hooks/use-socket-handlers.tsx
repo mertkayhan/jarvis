@@ -114,12 +114,6 @@ export function useSocketHandlers(
             console.log("Disconnected from server", reason, details);
             // setWait(true);
             dispatch({ type: "DISCONNECT" });
-
-            if (reason === "io server disconnect") {
-                socket.connect(); 
-            } else if (reason === "transport close") {
-                console.error("Network issue detected. Awaiting automatic reconnect...");
-            }
         };
         socket.on("connect", handleConnect);
         socket.on("disconnect", handleDisconnect);
