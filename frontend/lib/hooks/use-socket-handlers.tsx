@@ -22,7 +22,7 @@ export function useSocketHandlers(
     setSelectedDocumentPack: Dispatch<SetStateAction<DocumentPack | null>>
 ) {
     const movedUp = useRef(false);
-    const chatTitle = useChatTitle(id);
+    const chatTitle = useChatTitle(userId, id);
     const chatTitleRef = useRef<string | null>(null);
     const defaultPersonality = useDefaultPersonality(userId);
     const messageHistory = useMessageHistory(userId, id);
@@ -116,7 +116,7 @@ export function useSocketHandlers(
             dispatch({ type: "DISCONNECT" });
 
             if (reason === "io server disconnect") {
-                socket.connect(); // Optional: Explicit reconnect if server disconnected
+                socket.connect(); 
             } else if (reason === "transport close") {
                 console.error("Network issue detected. Awaiting automatic reconnect...");
             }
@@ -124,11 +124,12 @@ export function useSocketHandlers(
         socket.on("connect", handleConnect);
         socket.on("disconnect", handleDisconnect);
 
-        socket.on("reconnect_attempt", () => {
+        socket.io.on("reconnect_attempt", () => {
             console.warn("Attempting to reconnect...");
         });
 
-        socket.on("reconnect", (attemptNumber) => {
+        socket.io.on("reconnect", (attemptNumber) => {
+            socket?.emit("join_chat_room", { "room_id": id });
             console.log(`Reconnected to server after ${attemptNumber} attempts`);
         });
 
@@ -196,7 +197,6 @@ export function useSocketHandlers(
             setMessages((currentMessages) => [...(currentMessages || []), msg]);
             setCurrentContext(msg.context)
         });
-
         return () => {
             socket.off("server_message");
             socket.off("chat_broadcast");

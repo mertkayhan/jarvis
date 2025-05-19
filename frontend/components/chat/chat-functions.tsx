@@ -43,6 +43,7 @@ export const cancelFn = (
 }
 
 export const reloadFn = (
+    userId: string,
     id: string,
     socket: Socket | null,
     dispatch: Dispatch<any>,
@@ -75,11 +76,10 @@ export const reloadFn = (
             // console.log("to delete", messages[lastUserMsgIndex + 1])
             const diff = messages.length - lastUserMsgIndex;
             for (let i = 1; i < diff; i++) {
-                removeMessage(messages[lastUserMsgIndex + i].id).then(resp => {
-                    if (resp.error) {
-                        console.error(resp.error)
-                    }
+                removeMessage(userId, id, messages[lastUserMsgIndex + i].id).catch((err) => {
+                    console.error("failed to remove message:", err);
                 })
+                
             }
             setMessages(prevMessages => prevMessages.slice(0, -(diff - 1)));
         }

@@ -1,6 +1,6 @@
 import asyncio
 import datetime
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -102,7 +102,7 @@ async def get_all_user_chats(req: Request, deleted: bool = False) -> UserChats:
 
 
 class DeletedChats(BaseModel):
-    id: List[str]
+    id: List[UUID]
 
 
 @router.delete(
@@ -218,4 +218,131 @@ async def update_user_chat_title(
         raise HTTPException(
             status_code=500,
             detail="failed to update chat title, please refer to server logs for more details",
+        )
+
+
+class ChatTitle(BaseModel):
+    title: Optional[str] = None
+
+
+@router.get("/{chat_id}/title", response_model=ChatTitle)
+async def get_chat_title(chat_id: str) -> ChatTitle:
+    query = """
+        SELECT
+            title
+        FROM common.chat_history
+        WHERE id = (%s)
+    """
+
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                resp = await cur.execute(query, (chat_id,))
+                res = await resp.fetchall()
+                return ChatTitle(title=res[0]["title"] if res else None)
+
+    except Exception as err:
+        logger.error(f"failed to fetch chat title: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to fetch chat title, please refer to server logs for more details",
+        )
+
+
+class ChatMessage(BaseModel):
+    chatId: UUID
+    content: str
+    createdAt: datetime.datetime
+    data: Optional[str] = None
+    id: UUID
+    liked: Optional[bool] = None
+    role: str
+    score: Optional[float] = None
+    updatedAt: datetime.datetime
+    content: str
+
+
+class MessageHistory(BaseModel):
+    messages: List[ChatMessage]
+
+
+@router.get("/{chat_id}/messages", response_model=MessageHistory)
+async def get_chat_messages(chat_id: str) -> MessageHistory:
+    query = """
+        SELECT 
+            chat_id,
+            content, 
+            created_at,
+            data,
+            id,
+            liked, 
+            role,
+            score,
+            updated_at,
+            context 
+        FROM common.message_history
+        WHERE chat_id = %(chat_id)s AND role IN ('user', 'assistant')
+        ORDER BY created_at ASC
+    """
+
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                resp = await cur.execute(
+                    query,
+                    {"chat_id": chat_id},
+                )
+                res = await resp.fetchall()
+                return MessageHistory(
+                    messages=[
+                        ChatMessage(
+                            chatId=r["chat_id"],
+                            content=r["content"],
+                            createdAt=r["created_at"],
+                            data=r["data"],
+                            id=r["id"],
+                            liked=r["liked"],
+                            role=r["role"],
+                            score=r["score"],
+                            updatedAt=r["updated_at"],
+                        )
+                        for r in res
+                    ]
+                )
+    except Exception as err:
+        logger.error(f"failed to fetch message history: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to fetch chat message history, please refer to server logs for more details",
+        )
+
+
+class DeleteMessageResult(BaseModel):
+    id: UUID
+
+
+@router.delete(
+    "/chats/{chat_id}/messages/{message_id}", response_model=DeleteMessageResult
+)
+async def delete_message(chat_id: str, message_id: str) -> DeleteMessageResult:
+    query = """
+        DELETE FROM common.message_history 
+        WHERE id = (%s)
+        RETURNING id
+    """
+
+    try:
+        pool = await get_connection_pool()
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                resp = await cur.execute(query, (message_id,))
+                res = await resp.fetchall()
+                return DeleteMessageResult(id=res[0]["id"])
+    except Exception as err:
+        logger.error(f"failed to delete message: {err}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to delete message, please refer to server logs for more details",
         )

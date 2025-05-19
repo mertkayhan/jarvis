@@ -4,7 +4,6 @@ import { UserChat } from "@/lib/types";
 import { callBackend } from "@/lib/utils";
 
 export async function autogenChatTitle(userId: string, chatId: string) {
-    console.log("autogen title", userId, chatId);
     const data = await callBackend(
         {
             endpoint: `/api/v1/chats/${chatId}/title/autogen`,
@@ -20,7 +19,6 @@ export interface ListChatsResp {
 }
 
 export async function listChats(userId: string) {
-    console.log("listing chats", userId);
     const data = await callBackend(
         {
             endpoint: `/api/v1/chats/`,
@@ -42,7 +40,6 @@ export async function listChats(userId: string) {
 }
 
 export async function deleteChats(userId: string) {
-    console.log("delete chats", userId);
     await callBackend(
         {
             endpoint: `/api/v1/chats/`,
@@ -59,7 +56,6 @@ interface UpdateChatTitleResp {
 }
 
 export async function updateChatTitle(chatId: string, userId: string, newTitle: string) {
-    console.log("update chat title", userId, chatId, newTitle)
     const data = await callBackend(
         {
             endpoint: `/api/v1/chats/${chatId}/title`,
@@ -76,7 +72,6 @@ interface DeleteChatResp {
 }
 
 export async function deleteChat(chatId: string, userId: string) {
-    console.log("delete chat", chatId, userId);
     const data = await callBackend(
         {
             endpoint: `/api/v1//chats/${chatId}`,
