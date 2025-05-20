@@ -22,7 +22,6 @@ interface GetUserModelResp {
 }
 
 export async function getUserModel(userId: string) {
-    console.log("get user model:", userId);
     const data = await callBackend({
         endpoint: `/api/v1/model-selection`,
         method: "GET",
@@ -37,7 +36,6 @@ interface SetUserModelResp {
 }
 
 export async function setUserModel(userId: string, modelName: string) {
-    console.log("set user model", userId, modelName);
     const data = await callBackend({
         endpoint: `/api/v1/model-selection`,
         method: "POST",

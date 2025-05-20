@@ -40,11 +40,6 @@ app.include_router(personality_router)
 app.include_router(misc_router)
 
 
-# @app.get("/api/v1/users/{user_id}/chats/{chat_id}/messages")
-# async def get_chat_messages(user_id: str, chat_id: str, deleted: bool = False):
-#     pass
-
-
 # @app.get("/api/v1/users/{user_id}/chats")
 # async def get_user_chats(user_id: str, deleted: bool = False):
 #     pass
@@ -80,11 +75,6 @@ app.include_router(misc_router)
 
 # @app.get("/api/v1/users/{user_id}/chats/{chat_id}")
 # async def get_chat(user_id: str, chat_id: str):
-#     pass
-
-
-# @app.delete("/api/v1/users/{user_id}/chats/{chat_id}/messages/{message_id}")
-# async def delete_message(user_id: str, chat_id: str, message_id: str):
 #     pass
 
 

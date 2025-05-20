@@ -8,7 +8,6 @@ export interface ListDocumentsResp {
 }
 
 export async function listDocuments(userId: string) {
-    console.log("list documents", userId);
     const data = await callBackend(
         {
             endpoint: `/api/v1/docs/`,
@@ -28,7 +27,6 @@ interface DeleteDocumentResp {
 }
 
 export async function deleteDocument(userId: string, docId: string) {
-    console.log("delete document", docId);
     const data = await callBackend(
         {
             endpoint: `/api/v1/docs/${docId}`,

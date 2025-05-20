@@ -72,7 +72,7 @@ export function Chat({
 
     const append = appendFn(id, isLoading, setMessages, setLoading, socket, setCurrentContext);
     const cancel = cancelFn(socket, setLoading, id);
-    const reload = reloadFn(id, socket, setLoading, messages, setMessages);
+    const reload = reloadFn(userId, id, socket, setLoading, messages, setMessages);
     const generateFollowUp = generateFollowUpFn(socket, append, id, userId);
 
     const [open, setOpen] = useState(false);

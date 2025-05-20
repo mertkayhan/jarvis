@@ -19,6 +19,8 @@ export function useSocket({ socketNamespace, userId, token }: UseSocketProps) {
         let s: Socket | null = null;
 
         const initializeSocket = async () => {
+            // console.log(socketNamespace, socket?.id);
+            // console.log(token, userId);
             try {
                 const url = await getWSUrl();
                 s = io(`${url}/${socketNamespace}`, {
@@ -41,6 +43,8 @@ export function useSocket({ socketNamespace, userId, token }: UseSocketProps) {
         return () => {
             if (s && s.connected) {
                 s.disconnect();
+                s.offAny();
+                setSocket(null);
             }
         };
 

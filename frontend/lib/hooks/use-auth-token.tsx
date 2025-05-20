@@ -32,7 +32,7 @@ export function useAuthToken(userId: string | null | undefined) {
                 if (isMounted.current) {
                     scheduleFetch();
                 }
-            }, 60 * 1000);
+            }, 60 * 60 * 1000);
         };
 
         scheduleFetch();
