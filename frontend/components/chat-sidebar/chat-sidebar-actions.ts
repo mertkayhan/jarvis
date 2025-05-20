@@ -74,7 +74,7 @@ interface DeleteChatResp {
 export async function deleteChat(chatId: string, userId: string) {
     const data = await callBackend(
         {
-            endpoint: `/api/v1//chats/${chatId}`,
+            endpoint: `/api/v1/chats/${chatId}`,
             method: "DELETE",
             userId,
         }
