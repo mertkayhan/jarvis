@@ -42,7 +42,6 @@ logger.debug(f"CORS_ALLOWED_ORIGINS -> {getenv('CORS_ALLOWED_ORIGINS')}")
 class ProcessManager:
     def __init__(self):
         self.processes = {}
-        self.active = True
         signal.signal(signal.SIGTERM, self.handle_shutdown)
         signal.signal(signal.SIGINT, self.handle_shutdown)
 
@@ -61,7 +60,6 @@ class ProcessManager:
 
     def handle_shutdown(self, signum, frame):
         logger.info("Shutting down all processes...")
-        self.running = False
         for name, process in self.processes.items():
             logger.info(f"Stopping {name} service...")
             process.terminate()
