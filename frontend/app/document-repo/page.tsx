@@ -1,7 +1,7 @@
 'use client'
 
 import Loading from "@/app/loading";
-import { getWSUrl } from "@/components/chat/chat-actions";
+import { getBackendUrl } from "@/components/chat/chat-actions";
 import { MemoizedReactMarkdown } from "@/components/chat/markdown";
 import { getWorkflowStatus, listDocuments } from "@/components/document-packs/document-packs-actions";
 import { Sidebar } from "@/components/sidebar/chat-sidebar";
@@ -58,7 +58,7 @@ function useBackendUrl() {
     const [url, setUrl] = useState("");
     useEffect(() => {
         const getUrl = async () => {
-            const backendUrl = await getWSUrl();
+            const backendUrl = await getBackendUrl();
             setUrl(backendUrl);
         }
         getUrl();

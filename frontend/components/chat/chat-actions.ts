@@ -1,11 +1,9 @@
 'use server'
 
 import { Message, Personality } from "@/lib/types";
-import postgres from "postgres";
 import jwt from "jsonwebtoken";
+import { callBackend } from "@/lib/utils";
 
-const uri = process.env.DB_URI || "unknown";
-const sql = postgres(uri, { connection: { application_name: "Jarvis" } });
 
 let cachedToken: string | null = null;
 let tokenExpiryTime = 0;
@@ -37,20 +35,14 @@ export async function getToken(userId: string) {
 }
 
 export async function getDefaultSystemPrompt(userId: string) {
-    const backendUrl = process.env.BACKEND_URL;
-    const token = await getToken(userId);
-    const resp = await fetch(
-        `${backendUrl}/api/v1/default-prompt`,
-        {
-            method: "GET",
-            headers: { "Authorization": `Bearer ${token}` }
-        }
-    );
-    const data = await resp.json();
+    const data = await callBackend({
+        endpoint: "/api/v1/default-prompt",
+        userId
+    });
     return data as Personality;
 }
 
-export async function getWSUrl() {
+export async function getBackendUrl() {
     const url = process.env.BACKEND_URL;
     if (!url) {
         throw new Error('BACKEND_URL is not set!');
@@ -58,29 +50,20 @@ export async function getWSUrl() {
     return url;
 }
 
+export async function getWSUrl() {
+    return getBackendUrl();
+}
+
 interface GetChatTitleResp {
     title: string | null
 }
 
-export async function getChatTitle(id: string) {
-    console.log("get chat title", id);
-    return await getChatTitleHandler(id);
-}
-
-async function getChatTitleHandler(id: string) {
-    const getTitle = sql`
-    SELECT
-        title
-    FROM common.chat_history
-    WHERE id = ${id}
-    `;
-    try {
-        const res = await getTitle;
-        return { title: res[0]?.title } as GetChatTitleResp;
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+export async function getChatTitle(userId: string, id: string) {
+    const data = await callBackend({
+        endpoint: `/api/v1/chats/${id}/title`,
+        userId
+    });
+    return data as GetChatTitleResp;
 }
 
 interface LoadMessageHistoryResp {
@@ -88,67 +71,22 @@ interface LoadMessageHistoryResp {
 }
 
 export async function loadMessageHistory(userId: string, chatId: string) {
-    console.log("load message history", userId, chatId);
-    return await loadMessageHistoryHandler(chatId);
-}
-
-async function loadMessageHistoryHandler(chatId: string) {
-    const loadMessages = sql`
-    SELECT 
-        chat_id,
-        content, 
-        created_at,
-        data,
-        id,
-        liked, 
-        role,
-        score,
-        updated_at,
-        context 
-    FROM common.message_history
-    WHERE chat_id = ${chatId} AND role IN ('user', 'assistant')
-    ORDER BY created_at ASC
-    `;
-    try {
-        const res = await loadMessages;
-        return {
-            messages: res.map((r) => {
-                return {
-                    ...r as unknown as Message,
-                    chatId: r["chat_id"],
-                    createdAt: r["created_at"],
-                    updatedAt: r["updated_at"],
-                } as Message
-            })
-        } as LoadMessageHistoryResp;
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+    const data = await callBackend({
+        endpoint: `/api/v1/chats/${chatId}/messages`,
+        userId
+    });
+    return data as LoadMessageHistoryResp;
 }
 
 interface RemoveMessageResp {
-    error: string | null
+    id: string
 }
 
-export async function removeMessage(messageId: string) {
-    console.log("remove message", messageId);
-    return await removeMessageHandler(messageId);
-}
-
-async function removeMessageHandler(messageId: string) {
-    try {
-        const res = await sql.begin((sql) => [
-            sql`
-            DELETE FROM common.message_history 
-            WHERE id = ${messageId}
-            RETURNING id
-            `
-        ]);
-        console.log("res:", res);
-        return {} as RemoveMessageResp;
-    } catch (error) {
-        console.error(error);
-        return { error: "failed to remove message" } as RemoveMessageResp;
-    }
+export async function removeMessage(userId: string, chatId: string, messageId: string) {
+    const data = await callBackend({
+        endpoint: `/api/v1/chats/${chatId}/messages/${messageId}`,
+        method: "DELETE",
+        userId,
+    });
+    return data as RemoveMessageResp;
 }

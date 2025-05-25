@@ -1,4 +1,5 @@
 import asyncio
+import os
 from typing import List, Optional
 from jarvis.document_parsers.csv import process_csv
 from jarvis.document_parsers.gemini import gemini_pdf_processor
@@ -37,8 +38,10 @@ async def process_txt_wrapper(**kwargs) -> ProcessingResult:
     return await asyncio.to_thread(process_txt, **kwargs)
 
 
-async def process_csv_wrapper(**kwargs) -> ProcessingResult:
-    return await asyncio.to_thread(process_csv, **kwargs)
+async def process_csv_wrapper(*args) -> ProcessingResult:
+    return await asyncio.to_thread(
+        process_csv, *list(map(lambda x: f"{os.getenv('DOCUMENT_BUCKET')}/{x}", args))
+    )
 
 
 async def document_handler_wrapper(**kwargs) -> ProcessingResult:

@@ -33,21 +33,33 @@ sys.excepthook = log_uncaught_exceptions
 
 load_dotenv()
 
+logger.debug(f"CORS_ALLOWED_ORIGINS -> {getenv('CORS_ALLOWED_ORIGINS')}")
+
 
 async def main():
-    await run_migrations()
-    logger.debug(f"CORS_ALLOWED_ORIGINS -> {getenv('CORS_ALLOWED_ORIGINS')}")
-    sio = socketio.AsyncServer(
-        async_mode="asgi",
-        cors_allowed_origins=getenv("CORS_ALLOWED_ORIGINS").split(";"),
-    )
-    app.mount("/", socketio.ASGIApp(sio, app))
-    sio.register_namespace(Jarvis("/jarvis"))
-    asyncio.create_task(run_cleanup(), name="clean_up_task")
-    logger.info("Ready to accept connections...")
-    uvicorn.run(app, host=getenv("HOST", "0.0.0.0"), port=8000)
-    logger.info("tearing down connection pool")
-    await close_connection_pool()
+    try:
+        await run_migrations()
+        asyncio.create_task(run_cleanup(), name="clean_up_task")
+        sio = socketio.AsyncServer(
+            async_mode="asgi",
+            cors_allowed_origins=getenv("CORS_ALLOWED_ORIGINS", "").split(";"),
+            logger=True,
+            engineio_logger=True,
+            http_compression=True,
+        )
+        sio.register_namespace(Jarvis("/jarvis"))
+        asgi_app = socketio.ASGIApp(sio, other_asgi_app=app)
+        uvicorn.run(
+            asgi_app,
+            host=getenv("HOST", "0.0.0.0"),
+            port=8000,
+        )
+    except Exception as err:
+        logger.error(f"Error in main process: {err}", exc_info=True)
+        raise RuntimeError from err
+    finally:
+        logger.info("tearing down connection pool")
+        await close_connection_pool()
 
 
 if __name__ == "__main__":

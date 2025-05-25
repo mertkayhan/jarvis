@@ -9,6 +9,7 @@ COPY --from=builder /app/requirements.txt .
 RUN apt-get update && \
     apt-get install -y git g++ && \ 
     pip install -r requirements.txt 
+ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH="${PYTHONPATH}:/app/jarvis"
 ENV NUMBA_CACHE_DIR="/tmp/numba"
 ENV MPLCONFIGDIR="/tmp/matplotlib"

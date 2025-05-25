@@ -1,5 +1,4 @@
 import io
-import gcsfs
 from os import getenv
 from jarvis.blob_storage import resolve_storage
 from jarvis.document_parsers.type import ProcessingResult
