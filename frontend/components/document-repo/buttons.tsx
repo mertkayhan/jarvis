@@ -15,7 +15,7 @@ import { useToast } from "@/lib/hooks/use-toast";
 import { uuidv4 } from "@/lib/utils";
 import { ToastAction } from "../ui/toast";
 import { useAuthToken } from "@/lib/hooks/use-auth-token";
-import { getWSUrl } from "../chat/chat-actions";
+import { getBackendUrl } from "../chat/chat-actions";
 
 interface UploadButtonProps {
     uploadRunning: boolean
@@ -27,7 +27,7 @@ function useBackendUrl() {
     const [url, setUrl] = useState("");
     useEffect(() => {
         const getUrl = async () => {
-            const backendUrl = await getWSUrl();
+            const backendUrl = await getBackendUrl();
             setUrl(backendUrl);
         }
         getUrl();

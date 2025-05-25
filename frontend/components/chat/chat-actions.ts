@@ -42,6 +42,14 @@ export async function getDefaultSystemPrompt(userId: string) {
     return data as Personality;
 }
 
+export async function getBackendUrl() {
+    const url = process.env.BACKEND_URL;
+    if (!url) {
+        throw new Error('BACKEND_URL is not set!');
+    }
+    return url;
+}
+
 export async function getWSUrl() {
     const url = process.env.WS_URL;
     if (!url) {

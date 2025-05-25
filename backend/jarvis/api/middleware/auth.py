@@ -16,6 +16,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
+        # skip CORS preflight requests
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         credentials = await HTTPBearer()(request)
         if credentials:
             if not credentials.scheme == "Bearer":
