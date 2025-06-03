@@ -47,7 +47,7 @@ async def generate_chat_title(chat_id: str) -> AutoGenChatTitle:
 class UserChat(BaseModel):
     id: UUID
     owner_email: str
-    title: str
+    title: Optional[str] = None
     created_at: datetime.datetime
     updated_at: datetime.datetime
 

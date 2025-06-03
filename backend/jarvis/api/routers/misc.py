@@ -8,6 +8,7 @@ from jarvis.blob_storage import resolve_storage
 from jarvis.db.db import get_connection_pool
 from jarvis.document_parsers.parser import resolve_parser
 from jarvis.models import ALL_SUPPORTED_MODELS
+from jarvis.models.models import get_default_model
 from jarvis.queries.query_handlers import insert_doc
 from jarvis.tools import ALL_AVAILABLE_TOOLS
 
@@ -84,7 +85,6 @@ async def get_default_system_prompt(req: Request) -> SystemPrompt:
 async def get_available_models() -> UserModels:
     return UserModels(
         models=[AIModel(name=model_name) for model_name in ALL_SUPPORTED_MODELS]
-        + [AIModel(name="automatic")]
     )
 
 
@@ -199,7 +199,9 @@ async def get_user_model_selection(req: Request) -> UserModel:
             async with conn.cursor(row_factory=dict_row) as cur:
                 resp = await cur.execute(query, (user_id,))
                 res = await resp.fetchall()
-                return UserModel(model=res[0]["model_name"] if res else "automatic")
+                return UserModel(
+                    model=res[0]["model_name"] if res else get_default_model()
+                )
     except Exception as err:
         logger.error(f"failed to get user model: {err}", exc_info=True)
         raise HTTPException(

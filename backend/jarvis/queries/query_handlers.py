@@ -9,6 +9,8 @@ from jarvis.blob_storage import resolve_storage
 from jarvis.db.db import get_connection_pool
 from dotenv import load_dotenv
 
+from jarvis.models.models import get_default_model
+
 logger = logging.getLogger(__name__)
 load_dotenv()
 
@@ -152,16 +154,16 @@ async def get_model_selection(user) -> str:
 
         if not res:
             logger.info(
-                f"{user} has no model preference in the database, returning automatic..."
+                f"{user} has no model preference in the database, returning default model..."
             )
-            return "automatic"
+            return get_default_model()
 
-        model_selection = res[0].get("model_name", "automatic")
+        model_selection = res[0].get("model_name", get_default_model())
         if not model_selection:
             logger.warning(
-                f"model_selection for {user} is None and this should not happen! Returning automatic"
+                f"model_selection for {user} is None and this should not happen! Returning default model"
             )
-            return "automatic"
+            return get_default_model()
         return model_selection
 
 
