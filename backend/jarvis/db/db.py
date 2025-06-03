@@ -13,7 +13,9 @@ _pool = AsyncConnectionPool(
     kwargs={
         "autocommit": True,
         "prepare_threshold": 0,
+        "connect_timeout": 60,
     },
+    timeout=60,
 )
 
 
