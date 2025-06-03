@@ -134,7 +134,7 @@ export function useSocketHandlers(
             socket.off("reconnect_attempt");
             socket.off("reconnect");
         };
-    }, [socket, userId]);
+    }, [socket, userId, id]);
 
     useEffect(() => {
         if (!socket) {
