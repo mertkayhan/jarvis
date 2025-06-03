@@ -20,7 +20,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { MouseEventHandler, useState } from "react";
+import { MouseEventHandler, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogTrigger } from "../ui/dialog";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { updateMessageLike } from "./chat-message-actions";
@@ -77,7 +77,12 @@ export function ChatMessage({
       <div className="flex flex-col flex-1">
         <div className={cn("group relative flex items-start md:-ml-12")}>
           {message.role === "user" ? (
-            <UserMessage message={message} />
+            <UserMessage
+              message={message}
+              streaming={streaming}
+              onCopy={onCopy}
+              isCopied={isCopied as boolean}
+            />
           ) : (
             <AIMessage
               message={message}
@@ -151,9 +156,21 @@ export function ImgCarousel({ imgs, startIndex }: ImgCarouselProps) {
 
 interface UserMessageProps {
   message: Message;
+  streaming: boolean;
+  onCopy: MouseEventHandler;
+  isCopied: boolean;
 }
 
-export function UserMessage({ message }: UserMessageProps) {
+export function UserMessage({
+  message,
+  streaming,
+  onCopy,
+  isCopied,
+}: UserMessageProps) {
+  const [editable, setEditable] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [value, setValue] = useState(message.content);
+
   return (
     <div className="flex-1 overflow-y-auto rounded-xl p-4 text-xs md:text-sm leading-6 text-slate-900 bg-background dark:text-slate-300">
       <div className="mb-4 flex rounded-xl bg-slate-200 px-2 py-6 dark:bg-slate-900 sm:px-4">
@@ -163,10 +180,113 @@ export function UserMessage({ message }: UserMessageProps) {
             className="px-2 bg-transparent w-full resize-none focus:ring-0 focus:outline-none"
             // @ts-ignore
             style={{ fieldSizing: "content", minHeight: "3rem" }}
-            value={message.content}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            contentEditable={editable}
+            ref={textareaRef}
           />
         </div>
       </div>
+      {!streaming && (
+        <div className="mb-2 flex w-full flex-row gap-x-2 text-slate-500 justify-end">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className="hover:text-blue-600"
+                  onClick={() => {
+                    setEditable((old) => {
+                      if (!old) {
+                        const textarea = textareaRef.current;
+                        if (textarea) {
+                          textarea.focus();
+                          const length = textarea.value.length;
+                          textarea.setSelectionRange(length, length);
+                        }
+                      } else {
+                        // TODO: regenerate with updated message
+                      }
+                      return !old;
+                    });
+                  }}
+                >
+                  <span className="sr-only">Edit messsage</span>
+                  {(!editable && (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                    </svg>
+                  )) || (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Edit message</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className="hover:text-blue-600"
+                  type="button"
+                  onClick={onCopy}
+                >
+                  <span className="sr-only">Copy</span>
+                  {isCopied ? (
+                    <svg
+                      className="h-5 w-5"
+                      viewBox="0 0 15 15"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M11.4669 3.72684C11.7558 3.91574 11.8369 4.30308 11.648 4.59198L7.39799 11.092C7.29783 11.2452 7.13556 11.3467 6.95402 11.3699C6.77247 11.3931 6.58989 11.3355 6.45446 11.2124L3.70446 8.71241C3.44905 8.48022 3.43023 8.08494 3.66242 7.82953C3.89461 7.57412 4.28989 7.55529 4.5453 7.78749L6.75292 9.79441L10.6018 3.90792C10.7907 3.61902 11.178 3.53795 11.4669 3.72684Z"
+                        fill="currentColor"
+                        fillRule="evenodd"
+                        clipRule="evenodd"
+                      ></path>
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      viewBox="0 0 24 24"
+                      strokeWidth="2"
+                      stroke="currentColor"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                      <path d="M8 8m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z"></path>
+                      <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+                    </svg>
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Copy message content</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
     </div>
   );
 }
@@ -199,7 +319,7 @@ export function AIMessage({
           <MessageContainer message={message} />
         </div>
         {!streaming && (
-          <div className="mb-2 flex w-full flex-row justify-start gap-x-2 text-slate-500">
+          <div className="mb-2 flex w-full flex-row justify-end gap-x-2 text-slate-500">
             {message.score && <Badge score={message.score} />}
             <TooltipProvider>
               <Tooltip>
