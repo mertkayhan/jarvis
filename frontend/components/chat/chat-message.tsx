@@ -179,7 +179,7 @@ export function UserMessage({
           <textarea
             className="px-2 bg-transparent w-full resize-none focus:ring-0 focus:outline-none"
             // @ts-ignore
-            style={{ fieldSizing: "content", minHeight: "3rem" }}
+            style={{ fieldSizing: "content", minHeight: "1rem" }}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             contentEditable={editable}
@@ -194,6 +194,7 @@ export function UserMessage({
               <TooltipTrigger asChild>
                 <button
                   className="hover:text-blue-600"
+                  disabled
                   onClick={() => {
                     setEditable((old) => {
                       if (!old) {

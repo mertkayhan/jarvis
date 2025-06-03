@@ -65,7 +65,7 @@ export function SearchBox({ setQuery }: SearchBoxProps) {
           )) || (
             <button
               type="button"
-              className="absolute bottom-2 right-2.5 rounded-lg p-2 text-sm text-slate-500 hover:text-blue-700 focus:outline-none sm:text-base"
+              className="absolute bottom-2 right-2.5 rounded-lg p-2 text-sm text-slate-500 hover:text-blue-700 focus:outline-none sm:text-base justify-center items-center"
               onClick={() => {
                 setQuery("");
                 setInputValue("");
@@ -73,7 +73,7 @@ export function SearchBox({ setQuery }: SearchBoxProps) {
               }}
             >
               <svg
-                className="h-5 w-5"
+                className="h-4 w-4"
                 strokeWidth="2"
                 viewBox="0 0 15 15"
                 fill="none"

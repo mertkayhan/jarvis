@@ -55,10 +55,7 @@ export function ChatHistoryList({
 
   return (
     <div className="h-full w-24 overflow-y-auto bg-background md:w-60 flex flex-col overflow-x-hidden">
-      <div className="justify-between flex items-center">
-        <h2 className="inline px-5 text-sm md:text-lg font-bold text-transparent bg-gradient-to-r from-purple-400 to-indigo-500 bg-clip-text">
-          Chats
-        </h2>
+      <div className="justify-end flex items-center">
         <HiddenChatListButton setShowChatList={setShowChatList} />
       </div>
       <div className="flex items-start">
@@ -93,7 +90,7 @@ export function ChatHistoryList({
           })
         ) : (
           <div className="p-8 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               No chat history
             </p>
           </div>
