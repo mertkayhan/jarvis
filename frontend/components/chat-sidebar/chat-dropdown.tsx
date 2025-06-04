@@ -115,7 +115,8 @@ export function ChatDropdown({
           </DialogTrigger>
           <DialogTrigger asChild>
             <DropdownMenuItem
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setCurrentDialog("rename");
               }}
             >
@@ -126,7 +127,8 @@ export function ChatDropdown({
           </DialogTrigger>
           <DialogTrigger asChild>
             <DropdownMenuItem
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setCurrentDialog("share");
               }}
             >
@@ -136,7 +138,8 @@ export function ChatDropdown({
           </DialogTrigger>
           <DialogTrigger asChild>
             <DropdownMenuItem
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setCurrentDialog("delete");
               }}
             >
