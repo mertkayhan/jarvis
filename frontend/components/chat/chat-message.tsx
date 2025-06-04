@@ -172,7 +172,7 @@ export function UserMessage({
   const [value, setValue] = useState(message.content);
 
   return (
-    <div className="flex-1 overflow-y-auto rounded-xl p-4 text-xs md:text-sm leading-6 text-slate-900 bg-background dark:text-slate-300">
+    <div className="flex-1 overflow-y-auto rounded-xl p-4 text-xs md:text-sm leading-6 text-slate-900 bg-background dark:text-slate-300 group">
       <div className="mb-4 flex rounded-xl bg-slate-200 px-2 py-6 dark:bg-slate-900 sm:px-4">
         <div className="flex md:max-w-3xl lg:max-w-4xl items-center">
           {/* <MessageContainer message={message} /> */}
@@ -188,12 +188,12 @@ export function UserMessage({
         </div>
       </div>
       {!streaming && (
-        <div className="mb-2 flex w-full flex-row gap-x-2 text-slate-500 justify-end">
+        <div className="mb-2 flex w-full flex-row gap-x-2 text-slate-500 justify-start opacity-0 group-hover:opacity-100 ">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="hover:text-blue-600"
+                  // className="hover:text-blue-600"
                   disabled
                   onClick={() => {
                     setEditable((old) => {
@@ -313,14 +313,14 @@ export function AIMessage({
 }: AIMessageProps) {
   return (
     <>
-      <div className="flex-1 overflow-wrap rounded-xl p-4 text-xs md:text-sm leading-6 text-slate-900 bg-background dark:text-slate-300">
+      <div className="flex-1 overflow-wrap rounded-xl p-4 text-xs md:text-sm leading-6 text-slate-900 bg-background dark:text-slate-300 group">
         <div
           className={`flex md:max-w-3xl lg:max-w-4xl items-start rounded-xl pb-4`}
         >
           <MessageContainer message={message} />
         </div>
         {!streaming && (
-          <div className="mb-2 flex w-full flex-row justify-end gap-x-2 text-slate-500">
+          <div className="mb-2 flex w-full flex-row justify-start gap-x-2 text-slate-500 opacity-0 group-hover:opacity-100">
             {message.score && <Badge score={message.score} />}
             <TooltipProvider>
               <Tooltip>
