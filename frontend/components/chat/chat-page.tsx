@@ -1,9 +1,9 @@
-'use client'
+'use client';
 
 import { useUser } from '@auth0/nextjs-auth0/client';
 import Loading from '@/app/loading';
 import { Dispatch, Reducer, useEffect, useReducer, useState } from 'react';
-import { Chat } from '@/components/chat/chat'
+import { Chat } from '@/components/chat/chat';
 import { Sidebar } from '@/components/sidebar/chat-sidebar';
 import { ChatHistoryList } from '../chat-sidebar/chat-history-list';
 import { Personality } from '@/lib/types';
@@ -11,35 +11,29 @@ import { getDefaultPersonality } from '@/components/personalities/personality-ac
 import { useQuery } from '@tanstack/react-query';
 import { Socket } from 'socket.io-client';
 import { chatGeneratingReducer } from './chat-reducers';
-import { getDefaultSystemPrompt } from './chat-actions';
 
 interface ChatPageProps {
-    path: string
-    greeting: string
-    moduleName: string
-    title: string
-    socket: Socket | null
-    id: string
-    dispatch: Dispatch<any>
+    path: string;
+    greeting: string;
+    moduleName: string;
+    title: string;
+    socket: Socket | null;
+    id: string;
+    dispatch: Dispatch<any>;
 }
 
 function useDefaultPersonality(userId: string) {
     const { data, isLoading } = useQuery({
         queryKey: ["getDefaultPersonality", userId],
         queryFn: () => getDefaultPersonality(userId as string),
-        enabled: !!userId
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 5,
+        refetchOnMount: false,
     });
     return { defaultPersonality: data?.personality, defaultPersonalityLoading: isLoading };
 }
 
-function useDefaultSystemPrompt(userId: string | null | undefined) {
-    const { data, isLoading } = useQuery({
-        queryKey: ["systemPrompt", userId],
-        enabled: !!userId,
-        queryFn: () => getDefaultSystemPrompt(userId as string)
-    });
-    return { defaultSystemPrompt: data, promptLoading: isLoading };
-}
 
 export default function ChatPage({
     path,
@@ -53,27 +47,22 @@ export default function ChatPage({
     const { user, error, isLoading } = useUser();
     const [showChatList, setShowChatList] = useState(true);
     const { defaultPersonality, defaultPersonalityLoading } = useDefaultPersonality(user?.email as string);
-    const { defaultSystemPrompt, promptLoading } = useDefaultSystemPrompt(user?.email);
     const [selectedPersonality, setSelectedPersonality] = useState<Personality | undefined>(undefined);
     const [chatGenerating, chatGeneratingDispatch] = useReducer<Reducer<Record<string, boolean>, any>>(chatGeneratingReducer, {});
 
     useEffect(() => {
-        if (defaultPersonality) {
-            setSelectedPersonality((old) => (old !== defaultSystemPrompt) ? defaultPersonality : old);
-        } else if (defaultSystemPrompt) {
-            setSelectedPersonality((old) => (old !== defaultSystemPrompt) ? defaultSystemPrompt : old);
-        }
-    }, [defaultPersonality, defaultSystemPrompt]);
+        setSelectedPersonality(defaultPersonality);
+    }, [defaultPersonality]);
 
-    if (isLoading || promptLoading || defaultPersonalityLoading) {
+    if (isLoading || defaultPersonalityLoading) {
         return (
             <>
                 <title>Loading...</title>
                 <Loading />
             </>
-        )
+        );
     }
-    if (error) return <p>{error.message}</p>
+    if (error) return <p>{error.message}</p>;
 
     return (
         <div className='h-full flex flex-col flex-1'>
@@ -106,8 +95,7 @@ export default function ChatPage({
                             userId={user?.email as string}
                             path={path}
                             greeting={greeting}
-                            hasSystemPrompt
-                            defaultSystemPrompt={defaultSystemPrompt}
+                            defaultPersonality={defaultPersonality}
                             selectedPersonality={selectedPersonality}
                             setSelectedPersonality={setSelectedPersonality}
                             socket={socket}
@@ -120,7 +108,7 @@ export default function ChatPage({
                 </div>
             </div>
         </div >
-    )
+    );
 
 }
 

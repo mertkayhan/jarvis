@@ -1,4 +1,4 @@
-'use server'
+'use server';
 
 import { Message, Personality } from "@/lib/types";
 import jwt from "jsonwebtoken";
@@ -34,14 +34,6 @@ export async function getToken(userId: string) {
     }
 }
 
-export async function getDefaultSystemPrompt(userId: string) {
-    const data = await callBackend({
-        endpoint: "/api/v1/default-prompt",
-        userId
-    });
-    return data as Personality;
-}
-
 export async function getBackendUrl() {
     const url = process.env.BACKEND_URL;
     if (!url) {
@@ -55,7 +47,7 @@ export async function getWSUrl() {
 }
 
 interface GetChatTitleResp {
-    title: string | null
+    title: string | null;
 }
 
 export async function getChatTitle(userId: string, id: string) {
@@ -67,7 +59,7 @@ export async function getChatTitle(userId: string, id: string) {
 }
 
 interface LoadMessageHistoryResp {
-    messages: Message[]
+    messages: Message[];
 }
 
 export async function loadMessageHistory(userId: string, chatId: string) {
@@ -79,7 +71,7 @@ export async function loadMessageHistory(userId: string, chatId: string) {
 }
 
 interface RemoveMessageResp {
-    id: string
+    id: string;
 }
 
 export async function removeMessage(userId: string, chatId: string, messageId: string) {

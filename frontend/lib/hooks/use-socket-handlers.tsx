@@ -14,7 +14,6 @@ export function useSocketHandlers(
     userId: string,
     setMessages: Dispatch<SetStateAction<Message[]>>,
     setCurrentContext: Dispatch<SetStateAction<string | undefined | null>>,
-    defaultSystemPrompt: Personality | undefined,
     setSelectedPersonality: Dispatch<SetStateAction<Personality | undefined>>,
     dispatch: Dispatch<any>,
     setSelectedDocuments: Dispatch<SetStateAction<string[]>>,
@@ -64,7 +63,7 @@ export function useSocketHandlers(
                     const lastUserMessage = (lastMessage.role === "user") ? lastMessage : messages[messages.length - 2];
                     if (lastUserMessage.data) {
                         const data = JSON.parse(lastUserMessage.data);
-                        setSelectedPersonality(data.personality || defaultSystemPrompt);
+                        setSelectedPersonality((old) => (data.personality) ? data.personality : old);
                     }
                 } else {
                     setMessages([]);
@@ -87,14 +86,14 @@ export function useSocketHandlers(
         return () => {
             // setMessages([]);
             setSelectedDocuments([]);
-            setSelectedPersonality(defaultSystemPrompt);
+            setSelectedPersonality(defaultPersonality.data?.personality);
             setInitialized(false);
             chatTitleRef.current = null;
             movedUp.current = false;
             setCurrentContext(null);
             setSelectedQuestionPack(null);
             setSelectedDocumentPack(null);
-        }
+        };
     }, [id, socket]);
 
     useEffect(() => {
@@ -152,7 +151,7 @@ export function useSocketHandlers(
                         }
                         return c;
                     })
-                }
+                };
             });
         });
 
@@ -173,7 +172,7 @@ export function useSocketHandlers(
                 return;
             }
 
-            setCurrentContext((resp as Message)?.context)
+            setCurrentContext((resp as Message)?.context);
             setMessages((currentMessages) => {
                 // we must have at least one message to receive a response on it
                 // console.log("resp id", (resp as Message).id);
@@ -183,18 +182,18 @@ export function useSocketHandlers(
                 if (currentMessages[currentMessages.length - 1]?.id === (resp as Message).id) {
                     return currentMessages.slice(0, -1).concat(resp as Message);
                 }
-                return currentMessages.concat(resp as Message)
-            })
+                return currentMessages.concat(resp as Message);
+            });
         });
 
         socket.on("chat_broadcast", (msg: Message) => {
             setMessages((currentMessages) => [...(currentMessages || []), msg]);
-            setCurrentContext(msg.context)
+            setCurrentContext(msg.context);
         });
         return () => {
             socket.off("server_message");
             socket.off("chat_broadcast");
             socket.off("autogen_chat_title");
-        }
+        };
     }, [socket, id, userId]);
 }

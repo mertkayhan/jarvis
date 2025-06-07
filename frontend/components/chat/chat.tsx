@@ -14,12 +14,10 @@ import { ChatWindow } from "./chat-window";
 import {
   appendFn,
   cancelFn,
-  generateFollowUpFn,
   reloadFn,
 } from "./chat-functions";
 import { useNetworkStatus } from "@/lib/hooks/use-network-status";
 import { useSocketHandlers } from "@/lib/hooks/use-socket-handlers";
-import { motion } from "framer-motion";
 import { Button } from "../ui/button";
 import {
   Tooltip,
@@ -30,17 +28,18 @@ import {
 import { PersonalitySelectionMenu } from "../personalities/personality-selection-menu";
 import { Socket } from "socket.io-client";
 import { ModelSelection } from "../model-selection/model-selection";
-import { IconArrowRight, IconClose } from "../ui/icons";
+import { IconArrowRight } from "../ui/icons";
 import { KnowledgeMenu } from "../knowledge/knowledge-selection-menu";
 import { KnowledgeDropdown } from "../knowledge/knowledge-dropdown";
+import ConnectionBanner from "./connection-banner";
+import KnowledgeBanner from "./knowledge-banner";
 
 export interface ChatProps {
   initialMessages?: Message[];
   userId: string;
   path: string;
   greeting: string;
-  hasSystemPrompt: boolean;
-  defaultSystemPrompt: Personality | undefined;
+  defaultPersonality: Personality | undefined;
   selectedPersonality: Personality | undefined;
   setSelectedPersonality: Dispatch<SetStateAction<Personality | undefined>>;
   socket: Socket | null;
@@ -54,8 +53,7 @@ export function Chat({
   userId,
   path,
   greeting,
-  hasSystemPrompt,
-  defaultSystemPrompt,
+  defaultPersonality,
   selectedPersonality,
   setSelectedPersonality,
   socket,
@@ -75,7 +73,7 @@ export function Chat({
   const [selectedDocumentPack, setSelectedDocumentPack] =
     useState<DocumentPack | null>(null);
   const [initialized, setInitialized] = useState(false);
-  const [autoScroll, setAutoScroll] = useState(true);
+
   useNetworkStatus({ socket, path });
   useSocketHandlers(
     socket,
@@ -84,7 +82,6 @@ export function Chat({
     userId,
     setMessages,
     setCurrentContext,
-    defaultSystemPrompt,
     setSelectedPersonality,
     setLoading,
     setSelectedDocuments,
@@ -109,8 +106,6 @@ export function Chat({
     messages,
     setMessages
   );
-  const generateFollowUp = generateFollowUpFn(socket, append, id, userId);
-
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState("");
 
@@ -121,79 +116,24 @@ export function Chat({
         <>
           <div className="h-10 border-b w-full flex items-center px-2 top-0 sticky z-10 bg-background gap-x-2">
             <ModelSelection userId={userId} />
-            {selectedDocumentPack && (
-              <span className="ml-2 text-xs px-3 py-1 rounded-md bg-gradient-to-r from-purple-400 to-indigo-500 text-white shadow-lg transition-all duration-300 ease-in-out">
-                <div className="flex w-44 items-center h-4 justify-center">
-                  Document pack attached
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    type="button"
-                    onClick={() => setSelectedDocumentPack(null)}
-                    className="hover:bg-transparent hover:text-red-500 w-3 items-center justify-center ml-2"
-                  >
-                    <IconClose className="h-3 w-3" />
-                  </Button>
-                </div>
-              </span>
-            )}
-            {selectedQuestionPack && (
-              <span className="ml-2 text-xs px-3 py-1 rounded-md bg-gradient-to-r from-purple-400 to-indigo-500 text-white shadow-lg transition-all duration-300 ease-in-out">
-                <div className="flex w-40 items-center h-4 justify-center">
-                  Question pack attached
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    type="button"
-                    onClick={() => setSelectedQuestionPack(null)}
-                    className="hover:bg-transparent hover:text-red-500 w-3 items-center justify-center ml-2"
-                  >
-                    <IconClose className="h-3 w-3" />
-                  </Button>
-                </div>
-              </span>
-            )}
-            {selectedDocuments.length > 0 && (
-              <span className="ml-2 text-xs px-3 py-1 rounded-md bg-gradient-to-r from-purple-400 to-indigo-500 text-white shadow-lg transition-all duration-300 ease-in-out">
-                <div className="flex w-40 items-center h-4 justify-center">
-                  {selectedDocuments.length} document(s) attached
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    type="button"
-                    onClick={() => setSelectedDocuments([])}
-                    className="hover:bg-transparent hover:text-red-500 w-3 items-center justify-center ml-2"
-                  >
-                    <IconClose className="h-3 w-3" />
-                  </Button>
-                </div>
-              </span>
-            )}
-            <div className="flex w-full justify-end items-center gap-x-1">
-              <div
-                className={`ml-2 w-2 h-2 rounded-full ${
-                  socket?.connected && initialized
-                    ? "bg-green-500"
-                    : "bg-red-500"
-                }`}
-              ></div>
-              {(socket?.connected && initialized && (
-                <span className="text-xs">Online</span>
-              )) || <span className="text-xs text-slate-500">Offline</span>}
-            </div>
+            <KnowledgeBanner
+              selectedDocumentPack={selectedDocumentPack}
+              setSelectedDocumentPack={setSelectedDocumentPack}
+              selectedQuestionPack={selectedQuestionPack}
+              setSelectedQuestionPack={setSelectedQuestionPack}
+              selectedDocuments={selectedDocuments}
+              setSelectedDocuments={setSelectedDocuments}
+            />
+            <ConnectionBanner connected={socket?.connected} initialized={initialized} />
           </div>
           <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              layout
-              transition={{ duration: 0.3, ease: "easeInOut" }}
+            <div
+              id={id}
               className={`flex flex-col flex-1 ${messages.length > 0 ? "" : "my-auto"}`}
               style={{ height: "calc(100vh - 40px)" }}
             >
               {/* Chat Messages Section */}
-              <motion.div
+              <div
                 className={`flex flex-col flex-grow transition-all overflow-auto ${messages.length > 0 ? "" : "justify-end items-center"}`}
                 style={{ height: "calc(100vh - 40px)" }}
               >
@@ -201,11 +141,9 @@ export function Chat({
                   messages={messages}
                   isLoading={isLoading[id]}
                   setCurrentContext={setCurrentContext}
-                  initialized={initialized}
                   greeting={greeting}
-                  autoScroll={autoScroll}
                 />
-              </motion.div>
+              </div>
               {messages.length === 0 && (
                 <TooltipProvider>
                   <div className="hidden w-full md:flex flex-1 grid-cols-3 items-center gap-x-2 h-10 justify-center">
@@ -230,7 +168,7 @@ export function Chat({
                                   type="button"
                                   className="hover:bg-transparent hover:text-red-500 w-3 h-3"
                                   onClick={() =>
-                                    setSelectedPersonality(defaultSystemPrompt)
+                                    setSelectedPersonality(defaultPersonality)
                                   }
                                 >
                                   <svg
@@ -285,7 +223,7 @@ export function Chat({
                 </TooltipProvider>
               )}
               {/* Chat Input Box Section - Initially Centered */}
-              <motion.div
+              <div
                 className={`md:pt-4 w-full flex flex-col transition-all items-center mx-auto ${messages.length > 0 ? "" : "justify-start h-full flex-grow"}`}
               >
                 <ChatPanel
@@ -294,17 +232,13 @@ export function Chat({
                   stop={cancel}
                   append={append}
                   reload={reload}
-                  messageCount={messages?.length || 0}
+                  messageCount={messages.length}
                   input={input}
                   setInput={setInput}
                   userId={userId}
                   path={path}
-                  generateFollowUp={generateFollowUp}
-                  hasSystemPrompt={hasSystemPrompt}
                   selectedDocuments={selectedDocuments}
                   selectedPersonality={selectedPersonality}
-                  autoScroll={autoScroll}
-                  setAutoScroll={setAutoScroll}
                   selectedQuestionPack={selectedQuestionPack}
                   setSelectedDocuments={setSelectedDocuments}
                   selectedDocumentPack={selectedDocumentPack}
@@ -312,8 +246,8 @@ export function Chat({
                   setSelectedQuestionPack={setSelectedQuestionPack}
                   setSelectedDocumentPack={setSelectedDocumentPack}
                 />
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
           </>
         </>
       </ResizablePanel>

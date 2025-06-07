@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { useTheme } from "next-themes";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem } from "../ui/dropdown-menu";
@@ -37,13 +37,13 @@ export function ModeToggle() {
                 <TooltipContent>Toggle theme</TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="center" side="right">
-                <DropdownMenuItem onClick={() => { setTheme("light") }} className="text-slate-500 dark:text-slate-400 dark:hover:text-slate-50">
+                <DropdownMenuItem onClick={() => { setTheme("light"); }} >
                     Light
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setTheme("dark") }} className="text-slate-500 dark:text-slate-400 dark:hover:text-slate-50">
+                <DropdownMenuItem onClick={() => { setTheme("dark"); }} >
                     Dark
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
-    )
+    );
 }

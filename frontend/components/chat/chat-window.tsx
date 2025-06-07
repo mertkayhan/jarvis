@@ -1,23 +1,20 @@
-'use client'
+'use client';
 
-import { HashLoader } from "react-spinners";
 import { ChatList } from "./chat-list";
 import { EmptyScreen } from "@/components/chat/empty-screen";
 import { Message } from "@/lib/types";
 import { Dispatch, SetStateAction, useRef, useEffect } from "react";
 
 interface ChatWindowProps {
-    messages: Message[]
-    isLoading: boolean
-    setCurrentContext: Dispatch<SetStateAction<string | null | undefined>>
-    initialized: boolean
-    greeting: string
-    autoScroll: boolean
+    messages: Message[];
+    isLoading: boolean;
+    setCurrentContext: Dispatch<SetStateAction<string | null | undefined>>;
+    greeting: string;
 }
 
 export function ChatWindow({
-    messages, initialized, isLoading, setCurrentContext,
-    greeting, autoScroll }: ChatWindowProps) {
+    messages, isLoading, setCurrentContext,
+    greeting }: ChatWindowProps) {
 
     const messageEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -78,5 +75,5 @@ export function ChatWindow({
             }
 
         </>
-    )
+    );
 }
