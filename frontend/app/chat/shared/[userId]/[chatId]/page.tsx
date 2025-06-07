@@ -8,7 +8,6 @@ import { useAuthToken } from '@/lib/hooks/use-auth-token';
 import { useSocket } from '@/lib/hooks/use-socket';
 import { Reducer, useEffect, useReducer, useState } from 'react';
 import { chatGeneratingReducer } from '@/components/chat/chat-reducers';
-import { useQuery } from '@tanstack/react-query';
 
 
 export default function Page() {

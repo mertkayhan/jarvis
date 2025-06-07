@@ -10,6 +10,7 @@ import { ChatListItem } from "./chat-list-item";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/lib/hooks/use-toast";
+import { Skeleton } from "../ui/skeleton";
 
 interface ChatListProps {
   setShowChatList: Dispatch<SetStateAction<boolean>>;
@@ -48,14 +49,6 @@ export function ChatHistoryList({
       (c) => c.title?.toLowerCase().includes(query.toLowerCase()) || !c.title
     ) || [];
 
-  if (isLoading) {
-    return (
-      <div className="h-full w-24 overflow-y-auto bg-background md:w-60 flex flex-col overflow-x-hidden items-center justify-center">
-        <RotateLoader color="#94a3b8" />
-      </div>
-    );
-  }
-
   return (
     <div className="h-full w-24 overflow-y-auto bg-background md:w-60 flex flex-col overflow-x-hidden">
       <div className="justify-end flex items-center">
@@ -68,30 +61,28 @@ export function ChatHistoryList({
         <SearchBox setQuery={setQuery} />
       </div>
       <div className="mx-2 space-y-1 flex-1 overflow-hidden hover:overflow-y-auto w-24 md:w-[95%]">
-        {filteredChats.length ? (
+        {isLoading &&
+          Array.from({ length: 20 }).map(() => {
+            return <Skeleton className="w-full h-12" />;
+          })
+        }
+        {!isLoading && filteredChats.length > 0 && (
           filteredChats.map((chat, i) => {
             return (
-              <motion.div
-                key={chat.id}
-                layout
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.5 }}
-              >
+              <div key={i} className="transition-opacity duration-500 ease-in-out">
                 <ChatListItem
                   key={i}
                   chat={chat}
                   path={path}
-                  i={i}
                   userId={userId}
                   id={id}
                   dispatch={dispatch}
                 />
-              </motion.div>
+              </div>
             );
           })
-        ) : (
+        )}
+        {!isLoading && filteredChats.length === 0 && (
           <div className="p-8 text-center">
             <p className="text-xs text-slate-500 dark:text-slate-400">
               No chat history
