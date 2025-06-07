@@ -1,37 +1,33 @@
-'use client'
+'use client';
 
-import { Dispatch, MutableRefObject, SetStateAction, useState } from 'react'
-import { uuidv4 } from '@/lib/utils'
-import { DocumentPack, Message, Personality, QuestionPack, UserChat } from '@/lib/types'
-import { ChatInput } from '@/components/chat/chat-input'
-import imageCompression from 'browser-image-compression'
-import { useQueryClient } from '@tanstack/react-query'
-import { ListChatsResp } from '../chat-sidebar/chat-sidebar-actions'
+import { Dispatch, MutableRefObject, SetStateAction, useState } from 'react';
+import { uuidv4 } from '@/lib/utils';
+import { DocumentPack, Message, Personality, QuestionPack, UserChat } from '@/lib/types';
+import { ChatInput } from '@/components/chat/chat-input';
+import imageCompression from 'browser-image-compression';
+import { useQueryClient } from '@tanstack/react-query';
+import { ListChatsResp } from '../chat-sidebar/chat-sidebar-actions';
 
 export interface ChatPanelProps {
-  id: string
-  title?: string
-  isLoading: boolean
+  id: string;
+  title?: string;
+  isLoading: boolean;
   stop: () => void,
   append: (m: Message) => void,
   reload: () => void,
   input: string,
   setInput: Dispatch<SetStateAction<string>>,
   messageCount: number,
-  userId: string
-  path: string
-  generateFollowUp: () => void
-  hasSystemPrompt: boolean
-  selectedPersonality: Personality | undefined
-  selectedDocuments: string[]
-  autoScroll: boolean
-  setAutoScroll: Dispatch<SetStateAction<boolean>>
-  selectedQuestionPack: QuestionPack | null
-  setSelectedDocuments: Dispatch<SetStateAction<string[]>>
-  dispatch: Dispatch<any>
-  selectedDocumentPack: DocumentPack | null
-  setSelectedQuestionPack: Dispatch<SetStateAction<QuestionPack | null>>
-  setSelectedDocumentPack: Dispatch<SetStateAction<DocumentPack | null>>
+  userId: string;
+  path: string;
+  selectedPersonality: Personality | undefined;
+  selectedDocuments: string[];
+  selectedQuestionPack: QuestionPack | null;
+  setSelectedDocuments: Dispatch<SetStateAction<string[]>>;
+  dispatch: Dispatch<any>;
+  selectedDocumentPack: DocumentPack | null;
+  setSelectedQuestionPack: Dispatch<SetStateAction<QuestionPack | null>>;
+  setSelectedDocumentPack: Dispatch<SetStateAction<DocumentPack | null>>;
 }
 
 export function ChatPanel({
@@ -44,12 +40,8 @@ export function ChatPanel({
   setInput,
   messageCount,
   userId,
-  generateFollowUp,
-  hasSystemPrompt,
   selectedPersonality,
   selectedDocuments,
-  autoScroll,
-  setAutoScroll,
   selectedQuestionPack,
   setSelectedDocuments,
   dispatch,
@@ -135,7 +127,7 @@ export function ChatPanel({
                       userId: userId,
                     } as UserChat,
                     ...old.chats]
-                  }
+                  };
                 });
               }
               setSelectedImages([]);
@@ -151,12 +143,8 @@ export function ChatPanel({
             selectedPreviews={selectedPreviews}
             setSelectedPreviews={setSelectedPreviews}
             reload={reload}
-            generateFollowUp={generateFollowUp}
             stop={stop}
             messageCount={messageCount}
-            hasSystemPrompt={hasSystemPrompt}
-            autoScroll={autoScroll}
-            setAutoScroll={setAutoScroll}
             detectHallucination={detectHallucination}
             setDetectHallucination={setDetectHallucination}
             userId={userId}
@@ -166,5 +154,5 @@ export function ChatPanel({
         </div>
       </div>
     </div>
-  )
+  );
 }

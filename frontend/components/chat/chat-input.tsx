@@ -27,12 +27,8 @@ export interface ChatInputProps {
   selectedPreviews: string[];
   setSelectedPreviews: React.Dispatch<React.SetStateAction<string[]>>;
   reload: () => void;
-  generateFollowUp: () => void;
   stop: () => void;
   messageCount: number;
-  hasSystemPrompt: boolean;
-  autoScroll: boolean;
-  setAutoScroll: Dispatch<SetStateAction<boolean>>;
   detectHallucination: boolean;
   setDetectHallucination: Dispatch<SetStateAction<boolean>>;
   userId: string;
@@ -50,11 +46,8 @@ export function ChatInput({
   setSelectedPreviews,
   selectedPreviews,
   reload,
-  generateFollowUp,
   stop,
   messageCount,
-  autoScroll,
-  setAutoScroll,
   detectHallucination,
   setDetectHallucination,
   userId,

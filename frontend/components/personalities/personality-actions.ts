@@ -1,4 +1,4 @@
-"use server"
+"use server";
 
 import { Personality } from "@/lib/types";
 import postgres from "postgres";
@@ -26,10 +26,10 @@ export async function getPersonality(id: string, userId: string) {
         personality_id
     FROM common.default_personalities 
     WHERE user_id = ${userId}
-    `
+    `;
     try {
         const [personality, defaultPersonality] = await Promise.all([getPersonality, getDefaultPersonality]);
-        return { ...personality[0], isDefault: (defaultPersonality.length) ? personality[0].id === defaultPersonality[0]["personality_id"] : false } as Personality
+        return { ...personality[0], isDefault: (defaultPersonality.length) ? personality[0].id === defaultPersonality[0]["personality_id"] : false } as Personality;
     } catch (error) {
         console.error("failed to fetch personality", error);
         throw error;
@@ -46,7 +46,7 @@ export async function getAvailableTools(userId: string) {
 }
 
 export interface ListPersonalitiesResp {
-    personalities: Personality[] | null
+    personalities: Personality[] | null;
 }
 
 export async function listPersonalities(userId: string) {
@@ -60,7 +60,7 @@ export async function listPersonalities(userId: string) {
 }
 
 interface CreatePersonalityResp {
-    id: string
+    id: string;
 }
 
 export async function createPersonality(userId: string, name: string, description: string, instructions: string, owner: string, tools: string[], docIds: string[]) {
@@ -81,7 +81,7 @@ export async function createPersonality(userId: string, name: string, descriptio
 }
 
 interface DeletePersonalityResp {
-    id: string
+    id: string;
 }
 
 export async function deletePersonality(userId: string, id: string) {
@@ -95,7 +95,7 @@ export async function deletePersonality(userId: string, id: string) {
 }
 
 interface UpdatePersonalityResp {
-    id: string
+    id: string;
 }
 
 export async function updatePersonality(userId: string, id: string, name: string, description: string, instructions: string, tools: string[], docs: string[], owner: string) {
@@ -116,7 +116,7 @@ export async function updatePersonality(userId: string, id: string, name: string
 }
 
 interface MakePersonalityGlobalResp {
-    id: string
+    id: string;
 }
 
 export async function makePersonalityGlobal(id: string) {
@@ -143,7 +143,7 @@ async function makePersonalityGlobalHandler(id: string) {
 }
 
 interface SetDefaultPersonalityResp {
-    id: string
+    id: string;
 }
 
 export async function setDefaultPersonality(userId: string, personalityId: string) {
@@ -175,7 +175,7 @@ async function setDefaultPersonalityHandler(userId: string, personalityId: strin
 }
 
 interface DeleteDefaultPersonalityResp {
-    id: string
+    id: string;
 }
 
 export async function deleteDefaultPersonality(owner: string) {
@@ -201,33 +201,14 @@ async function deleteDefaultPersonalityHandler(owner: string) {
 }
 
 interface GetDefaultPersonalityResp {
-    personality: Personality
+    personality: Personality;
 }
 
 export async function getDefaultPersonality(userId: string) {
-    console.log("get default personality", userId);
-    return await getDefaultPersonalityHandler(userId);
+    const data = await callBackend({
+        endpoint: "/api/v1/personalities/default",
+        userId
+    });
+    return { personality: data } as GetDefaultPersonalityResp;
 }
 
-async function getDefaultPersonalityHandler(userId: string) {
-    const getDefault = sql`
-    SELECT
-        name,
-        tools,
-        instructions,
-        description
-    FROM common.default_personalities x
-    INNER JOIN common.personalities y
-    ON x.personality_id = y.id
-    WHERE x.user_id = ${userId}
-    `;
-    try {
-        const res = await getDefault;
-        return {
-            personality: (res.length) ? res[0] : null
-        } as GetDefaultPersonalityResp;
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
-}

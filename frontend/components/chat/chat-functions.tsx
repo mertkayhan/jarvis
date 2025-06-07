@@ -1,10 +1,9 @@
-'use client'
+'use client';
 
 import { Message } from "@/lib/types";
 import { Dispatch, SetStateAction } from "react";
 import { Socket } from "socket.io-client";
 import { removeMessage } from "./chat-actions";
-import { uuidv4 } from "@/lib/utils";
 
 export const appendFn = (
     id: string,
@@ -16,16 +15,16 @@ export const appendFn = (
 ) => {
     return (msg: Message) => {
         if (isLoading[id] || !socket) {
-            return
+            return;
         }
         setMessages((currentMessages) => {
-            return [...(currentMessages || []).concat(msg as Message)]
+            return [...(currentMessages || []).concat(msg as Message)];
         });
         dispatch({ type: "UPDATE_CHAT_STATUS", status: true, id: id });
         setCurrentContext(null);
         socket.emit("chat_message", msg);
-    }
-}
+    };
+};
 
 export const cancelFn = (
     socket: Socket | null,
@@ -35,12 +34,12 @@ export const cancelFn = (
     return () => {
         // const id = messagesRef.current[messagesRef.current.length - 1].id
         if (!socket) {
-            return
+            return;
         }
-        socket.emit("abort", id)
+        socket.emit("abort", id);
         dispatch({ type: "UPDATE_CHAT_STATUS", status: false, id: id });
-    }
-}
+    };
+};
 
 export const reloadFn = (
     userId: string,
@@ -52,7 +51,7 @@ export const reloadFn = (
 ) => {
     return () => {
         if (!socket) {
-            return
+            return;
         }
         dispatch({ type: "UPDATE_CHAT_STATUS", status: true, id: id });
         // console.log("reload");
@@ -78,30 +77,12 @@ export const reloadFn = (
             for (let i = 1; i < diff; i++) {
                 removeMessage(userId, id, messages[lastUserMsgIndex + i].id).catch((err) => {
                     console.error("failed to remove message:", err);
-                })
-                
+                });
+
             }
             setMessages(prevMessages => prevMessages.slice(0, -(diff - 1)));
         }
         socket.emit("chat_message", lastUserMsg);
-    }
+    };
 }
 
-export const generateFollowUpFn = (
-    socket: Socket | null,
-    appendImpl: (msg: Message) => void,
-    id: string | null | undefined,
-    userId: string
-) => {
-    return () => {
-        if (!socket) {
-            return
-        }
-        appendImpl({
-            id: uuidv4(),
-            content: "Generate 3 follow-up questions using the conversation history",
-            role: 'user',
-            data: JSON.stringify({ "chat_id": id, "user_id": userId, "images": [] })
-        } as Message)
-    }
-}
