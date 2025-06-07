@@ -1,15 +1,12 @@
 "use client";
 
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useState } from "react";
 import { listChats } from "./chat-sidebar-actions";
-import { RotateLoader } from "react-spinners";
 import { HiddenChatListButton } from "@/components/chat-sidebar/hide-chat-list";
 import { ListTitle } from "./chat-history-title";
 import { SearchBox } from "@/components/chat-sidebar/chat-history-search-box";
 import { ChatListItem } from "./chat-list-item";
-import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { useToast } from "@/lib/hooks/use-toast";
 import { Skeleton } from "../ui/skeleton";
 
 interface ChatListProps {
@@ -36,13 +33,6 @@ export function ChatHistoryList({
     gcTime: 1000 * 60 * 5,
     refetchOnMount: false,
   });
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (error) {
-      toast({ title: "Failed to list chats", variant: "destructive" });
-    }
-  }, [error]);
 
   const filteredChats =
     data?.chats.filter(
@@ -62,8 +52,8 @@ export function ChatHistoryList({
       </div>
       <div className="mx-2 space-y-1 flex-1 overflow-hidden hover:overflow-y-auto w-24 md:w-[95%]">
         {isLoading &&
-          Array.from({ length: 20 }).map(() => {
-            return <Skeleton className="w-full h-12" />;
+          Array.from({ length: 20 }).map((_, i) => {
+            return <Skeleton key={i} className="w-full h-12" />;
           })
         }
         {!isLoading && filteredChats.length > 0 && (
