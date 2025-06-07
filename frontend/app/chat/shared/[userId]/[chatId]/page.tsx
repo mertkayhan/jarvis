@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import Loading from '@/app/loading';
 import { Chat } from '@/components/chat/chat';
@@ -9,21 +9,15 @@ import { useSocket } from '@/lib/hooks/use-socket';
 import { Reducer, useEffect, useReducer, useState } from 'react';
 import { chatGeneratingReducer } from '@/components/chat/chat-reducers';
 import { useQuery } from '@tanstack/react-query';
-import { getDefaultSystemPrompt } from '@/components/chat/chat-actions';
 
 
 export default function Page() {
-    const params = useParams<{ userId: string; chatId: string }>();
+    const params = useParams<{ userId: string; chatId: string; }>();
     const id = params?.chatId;
     const token = useAuthToken(params.userId);
     const [userId, setUserId] = useState<string | null>(null);
     const socket = useSocket({ socketNamespace: "jarvis", userId: userId, token });
     const [chatGenerating, chatGeneratingDispatch] = useReducer<Reducer<Record<string, boolean>, any>>(chatGeneratingReducer, {});
-    const { data, isLoading } = useQuery({
-        queryKey: ["systemPrompt", params.userId],
-        enabled: !!params.userId,
-        queryFn: () => getDefaultSystemPrompt(params.userId)
-    });
 
     useEffect(() => {
         if (typeof window !== "undefined" && params?.userId) {
@@ -32,8 +26,8 @@ export default function Page() {
     }, [params?.userId]);
 
 
-    if (!id || !userId || isLoading) {
-        return <Loading />
+    if (!id || !userId) {
+        return <Loading />;
     }
 
     return (
@@ -61,9 +55,8 @@ export default function Page() {
                             id={id}
                             dispatch={(_: any) => { }}
                             userId={userId}
-                            hasSystemPrompt
-                            defaultSystemPrompt={data}
-                            selectedPersonality={data}
+                            defaultPersonality={undefined}
+                            selectedPersonality={undefined}
                             setSelectedPersonality={(_: any) => { }}
                             isLoading={chatGenerating}
                             setLoading={chatGeneratingDispatch}
@@ -72,5 +65,5 @@ export default function Page() {
                 </div>
             </div>
         </div >
-    )
+    );
 }
