@@ -15,7 +15,6 @@ import { Dispatch, useState } from "react";
 interface ChatListItemProps {
   chat: UserChat;
   path: string;
-  i: number;
   userId: string;
   id?: string | null;
   dispatch: Dispatch<any>;
@@ -24,7 +23,6 @@ interface ChatListItemProps {
 export function ChatListItem({
   chat,
   path,
-  i,
   userId,
   id,
   dispatch,
@@ -40,31 +38,23 @@ export function ChatListItem({
               onClick={() => {
                 dispatch({ type: "UPDATE_ID", payload: chat.id });
               }}
-              key={i}
+              key={`chat-history-list-box-${chat.id}`}
             >
-              <div className="relative w-full flex flex-1" key={i}>
-                <motion.div
-                  key={chat.id}
-                  layout
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.5 }}
-                >
+              <div className="relative w-full flex flex-1" key={chat.id}>
+                <div className="transition-opacity duration-500 ease-in-out">
                   <h1
                     className={`max-w-20 ${open ? "md:max-w-40" : "md:max-w-48 group-hover:md:max-w-40"} text-xs font-medium capitalize text-slate-700 dark:text-slate-200 relative max-h-5 select-none truncate break-all`}
                   >
                     {chat.title ?? "Untitled"}
                   </h1>
-                </motion.div>
+                </div>
                 <div
                   className={`
                     absolute right-1 flex items-center
                     transition-opacity duration-200 ease-in-out
-                    ${
-                      open
-                        ? "opacity-100 pointer-events-auto"
-                        : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                    ${open
+                      ? "opacity-100 pointer-events-auto"
+                      : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
                     }
                   `}
                 >
