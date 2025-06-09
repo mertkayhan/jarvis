@@ -23,10 +23,10 @@ type CallBackendOptions = {
 };
 
 export async function callBackend<T = any>(options: CallBackendOptions): Promise<T> {
-  const backendUrl = process.env.API_URL || process.env.WS_URL;
+  const backendUrl = process.env.PRIVATE_BACKEND_URL || process.env.PUBLIC_BACKEND_URL;
 
   if (!backendUrl) {
-    throw new Error("API_URL is not set!");
+    throw new Error("PRIVATE_BACKEND_URL is not set!");
   }
 
   const token = await getToken(options.userId);

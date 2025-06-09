@@ -35,17 +35,17 @@ export async function getToken(userId: string) {
 }
 
 export async function getBackendUrl() {
-    const url = process.env.API_URL || process.env.WS_URL;
+    const url = process.env.PRIVATE_BACKEND_URL || process.env.PUBLIC_BACKEND_URL;
     if (!url) {
-        throw new Error('API_URL is not set!');
+        throw new Error('PRIVATE_BACKEND_URL is not set!');
     }
     return url;
 }
 
 export async function getWSUrl() {
-    const url = process.env.WS_URL;
+    const url = process.env.PUBLIC_BACKEND_URL;
     if (!url) {
-        throw new Error('WS_URL is not set!');
+        throw new Error('PUBLIC_BACKEND_URL is not set!');
     }
     return url;
 }
