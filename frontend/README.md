@@ -23,7 +23,6 @@ You can use [this](https://auth0.com/docs/quickstart/webapp/nextjs/01-login) gui
 - BACKEND_URL: The backend URL, f.ex. "http://127.0.0.1:8000"
 - DB_URI: Connection string for the Postgres instance, f.ex. "postgresql://${user}:${pass}@${host}/${database}?sslmode=require&application_name=jarvis"
 - NEXT_PUBLIC_GOOGLE_ANALYTICS_KEY: Optional key to enable Google Analytics 
-- NEXT_PUBLIC_ENV: Optional, only for development purposes
 
 ### API related
 You can use [this](https://auth0.com/docs/quickstart/backend/python/01-authorization) guide to set API related environment variables.
