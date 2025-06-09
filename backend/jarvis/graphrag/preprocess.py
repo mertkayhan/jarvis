@@ -3,19 +3,17 @@ import gcsfs
 from langchain_openai import ChatOpenAI
 from unstructured.documents.elements import Element, Table
 from unstructured.partition.md import partition_md
-from os import getenv
 from dotenv import load_dotenv
+
+from jarvis.blob_storage import resolve_storage
 
 load_dotenv()
 
 
 async def preprocess_docs(source_path: str, target_path: str):
 
-    fs = gcsfs.GCSFileSystem(project=getenv("GOOGLE_PROJECT"), cache_timeout=0)
-
-    with fs.open(source_path, "r") as f:
-        source_doc = f.read()
-
+    storage = resolve_storage()
+    source_doc = storage.read(source_path).decode("utf-8")
     elements: List[Element] = partition_md(text=source_doc)
     final_content = ""
     for element in elements:
