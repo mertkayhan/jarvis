@@ -1,29 +1,29 @@
-'use client'
+'use client';
 
 import {
     ResizableHandle,
     ResizablePanel,
     ResizablePanelGroup,
-} from "@/components/ui/resizable"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { useState, useEffect, useReducer, Reducer } from "react"
-import { Question, QuestionFilter } from "@/lib/types"
-import { listQuestions, ListQuestionsResp } from "@/components/question-packs/question-actions"
-import { InvalidateQueryFilters, RefetchQueryFilters, useQuery, useQueryClient } from "@tanstack/react-query"
-import { NewQuestion } from "./new-question"
-import QuestionList from "./question-list"
-import { QuestionFilters } from "./question-filters"
-import { Searchbar } from "./searchbar"
-import { PageSelector } from "./page-selector"
-import { QuestionDisplay } from "./question-display"
-import { useToast } from "@/lib/hooks/use-toast"
-import { RotateLoader } from "react-spinners"
-import { questionFilterReducer } from "./reducer"
+} from "@/components/ui/resizable";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useState, useEffect, useReducer, Reducer } from "react";
+import { Question, QuestionFilter } from "@/lib/types";
+import { listQuestions, ListQuestionsResp } from "@/components/question-packs/question-actions";
+import { InvalidateQueryFilters, RefetchQueryFilters, useQuery, useQueryClient } from "@tanstack/react-query";
+import { NewQuestion } from "./new-question";
+import QuestionList from "./question-list";
+import { QuestionFilters } from "./question-filters";
+import { Searchbar } from "./searchbar";
+import { PageSelector } from "./page-selector";
+import { QuestionDisplay } from "./question-display";
+import { useToast } from "@/lib/hooks/use-toast";
+import { RotateLoader } from "react-spinners";
+import { questionFilterReducer } from "./reducer";
 
 interface QuestionsProps {
-    page: number
-    packId: string
-    userId: string
+    page: number;
+    packId: string;
+    userId: string;
 }
 
 export function Questions({
@@ -57,8 +57,8 @@ export function Questions({
     };
     const deleteQuestion = async () => {
         await queryClient.invalidateQueries(["listQuestions", packId, page, currentFilters, searchQuery] as InvalidateQueryFilters);
-        await queryClient.refetchQueries(["listQuestions", packId, page, currentFilters, searchQuery] as RefetchQueryFilters)
-    }
+        await queryClient.refetchQueries(["listQuestions", packId, page, currentFilters, searchQuery] as RefetchQueryFilters);
+    };
 
     useEffect(() => {
         if (currentFilters || searchQuery) {
@@ -74,7 +74,8 @@ export function Questions({
 
     useEffect(() => {
         if (error) {
-            toast({ title: "Failed to list questions", variant: "destructive" });
+            // toast({ title: "Failed to list questions", variant: "destructive" });
+            console.error("failed to list questions");
         }
     }, [error]);
 
@@ -138,5 +139,5 @@ export function Questions({
                 </ResizablePanel>
             </ResizablePanelGroup>
         </TooltipProvider >
-    )
+    );
 }

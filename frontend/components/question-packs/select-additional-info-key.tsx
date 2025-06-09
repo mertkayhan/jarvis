@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { useEffect, useState } from "react";
 import { listAdditionalInfoKeys } from "./question-actions";
@@ -12,23 +12,24 @@ import { IconSpinner } from "../ui/icons";
 import { useToast } from "@/lib/hooks/use-toast";
 
 interface SelectAdditionalInfoKeyProps {
-    packId?: string | null
-    value: string
-    setValue: (value: string) => void
+    packId?: string | null;
+    value: string;
+    setValue: (value: string) => void;
 }
 
 export function SelectAdditionalInfoKey({ packId, value, setValue }: SelectAdditionalInfoKeyProps) {
-    const [open, setOpen] = useState(false)
+    const [open, setOpen] = useState(false);
 
     const { data, isLoading, error } = useQuery({
         queryKey: ["listAdditionalInfoKeys", packId],
         queryFn: () => listAdditionalInfoKeys(packId as string),
         enabled: !!packId
     });
-    const { toast } = useToast();
+    // const { toast } = useToast();
     useEffect(() => {
         if (error) {
-            toast({ title: "Failed to list additional information keys", variant: "destructive" });
+            // toast({ title: "Failed to list additional information keys", variant: "destructive" });
+            console.error("failed to list additional information keys");
         }
     }, [error]);
 
@@ -59,8 +60,8 @@ export function SelectAdditionalInfoKey({ packId, value, setValue }: SelectAddit
                                     key={option}
                                     value={option}
                                     onSelect={(currentValue) => {
-                                        setValue(currentValue)
-                                        setOpen(false)
+                                        setValue(currentValue);
+                                        setOpen(false);
                                     }}
                                 >
                                     {option}
@@ -77,5 +78,5 @@ export function SelectAdditionalInfoKey({ packId, value, setValue }: SelectAddit
                 </Command>
             </PopoverContent>
         </Popover>
-    )
+    );
 }

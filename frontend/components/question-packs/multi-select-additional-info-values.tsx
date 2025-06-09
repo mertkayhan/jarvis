@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { Dispatch, useEffect, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
@@ -13,11 +13,11 @@ import { IconSpinner } from "../ui/icons";
 import { QuestionFilter } from "@/lib/types";
 
 interface MultiSelectAdditionalInfoValuesProps {
-    selectedKey: string
-    packId?: string | null
-    filter: QuestionFilter
-    dispatch: Dispatch<any>
-    index: number
+    selectedKey: string;
+    packId?: string | null;
+    filter: QuestionFilter;
+    dispatch: Dispatch<any>;
+    index: number;
 }
 
 export function MultiSelectAdditionalInfoValues({ selectedKey, packId, filter, dispatch, index }: MultiSelectAdditionalInfoValuesProps) {
@@ -27,10 +27,11 @@ export function MultiSelectAdditionalInfoValues({ selectedKey, packId, filter, d
         queryFn: () => listAdditinalInfoValues(selectedKey, packId as string),
         enabled: !!selectedKey.length && !!packId
     });
-    const { toast } = useToast();
+    // const { toast } = useToast();
     useEffect(() => {
         if (error) {
-            toast({ title: "Failed to list additional info values for the given key", variant: "destructive" });
+            // toast({ title: "Failed to list additional info values for the given key", variant: "destructive" });
+            console.error("failed to list additional info values for the given key");
         }
     }, [error]);
 
