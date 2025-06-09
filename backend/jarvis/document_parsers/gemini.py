@@ -20,37 +20,42 @@ due to recitation. There seems to be an open issue on the topic but no updates s
 """
 
 logger = logging.getLogger(__name__)
-_, project_id = google.auth.default()
-vertexai.init(project=project_id, location="europe-west1")
-model = GenerativeModel(
-    "gemini-2.0-flash-001",
-    safety_settings=[
-        SafetySetting(
-            category=vertexai.generative_models.HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
-            threshold=vertexai.generative_models.HarmBlockThreshold.OFF,
-        ),
-        SafetySetting(
-            category=vertexai.generative_models.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold=vertexai.generative_models.HarmBlockThreshold.OFF,
-        ),
-        SafetySetting(
-            category=vertexai.generative_models.HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold=vertexai.generative_models.HarmBlockThreshold.OFF,
-        ),
-        SafetySetting(
-            category=vertexai.generative_models.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold=vertexai.generative_models.HarmBlockThreshold.OFF,
-        ),
-        SafetySetting(
-            category=vertexai.generative_models.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold=vertexai.generative_models.HarmBlockThreshold.OFF,
-        ),
-        SafetySetting(
-            category=vertexai.generative_models.HarmCategory.HARM_CATEGORY_UNSPECIFIED,
-            threshold=vertexai.generative_models.HarmBlockThreshold.OFF,
-        ),
-    ],
-)
+
+try:
+    _, project_id = google.auth.default()
+    vertexai.init(project=project_id, location="europe-west1")
+    model = GenerativeModel(
+        "gemini-2.0-flash-001",
+        safety_settings=[
+            SafetySetting(
+                category=vertexai.generative_models.HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
+                threshold=vertexai.generative_models.HarmBlockThreshold.OFF,
+            ),
+            SafetySetting(
+                category=vertexai.generative_models.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold=vertexai.generative_models.HarmBlockThreshold.OFF,
+            ),
+            SafetySetting(
+                category=vertexai.generative_models.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold=vertexai.generative_models.HarmBlockThreshold.OFF,
+            ),
+            SafetySetting(
+                category=vertexai.generative_models.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold=vertexai.generative_models.HarmBlockThreshold.OFF,
+            ),
+            SafetySetting(
+                category=vertexai.generative_models.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold=vertexai.generative_models.HarmBlockThreshold.OFF,
+            ),
+            SafetySetting(
+                category=vertexai.generative_models.HarmCategory.HARM_CATEGORY_UNSPECIFIED,
+                threshold=vertexai.generative_models.HarmBlockThreshold.OFF,
+            ),
+        ],
+    )
+except Exception as err:
+    logger.error(f"Failed to initialize vertexai: {err}")
+    model = None
 
 bucket = asyncio.Queue(maxsize=100)
 
@@ -116,6 +121,7 @@ async def generate_async_with_backoff(
 ) -> ParseResult:
 
     temperature = 0
+    assert model, "model cannot be None!"
 
     try:
         await bucket.put(True)

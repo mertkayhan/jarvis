@@ -7,9 +7,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GOOGLE_PROJECT = getenv("GOOGLE_PROJECT")
-assert GOOGLE_PROJECT, "GOOGLE_PROJECT is not set!"
-
 
 def process_txt(src_path: str, target_path: str) -> ProcessingResult:
     storage = resolve_storage()

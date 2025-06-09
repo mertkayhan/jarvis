@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
 import Loading from "@/app/loading";
-import { getBackendUrl } from "@/components/chat/chat-actions";
+import { getBackendUrl, getWSUrl } from "@/components/chat/chat-actions";
 import { MemoizedReactMarkdown } from "@/components/chat/markdown";
 import { getWorkflowStatus, listDocuments } from "@/components/document-packs/document-packs-actions";
 import { Sidebar } from "@/components/sidebar/chat-sidebar";
@@ -24,21 +24,21 @@ import { HashLoader } from "react-spinners";
 import remarkGfm from "remark-gfm";
 
 interface ReadResp {
-    data: string | ArrayBuffer | null
-    fname: string | null
+    data: string | ArrayBuffer | null;
+    fname: string | null;
 }
 
 interface QueryResp {
-    response: string
+    response: string;
     context_enriched: {
-        sources: Sources[]
-    }
+        sources: Sources[];
+    };
 }
 
 interface Sources {
-    document_title: string
-    document_id: string
-    text: string
+    document_title: string;
+    document_id: string;
+    text: string;
 }
 
 enum Workflow {
@@ -58,9 +58,9 @@ function useBackendUrl() {
     const [url, setUrl] = useState("");
     useEffect(() => {
         const getUrl = async () => {
-            const backendUrl = await getBackendUrl();
+            const backendUrl = await getWSUrl();
             setUrl(backendUrl);
-        }
+        };
         getUrl();
     }, []);
     return url;
@@ -148,7 +148,7 @@ export default function Page() {
             localStorage.removeItem(`document_repo_run_${params.get("pack_id")}`);
             setTimeout(() => setOpen(false), 100);
         });
-    }
+    };
 
     useEffect(() => {
         if (error) {
@@ -183,7 +183,7 @@ export default function Page() {
                 setOpen(false);
                 return;
         }
-    }
+    };
 
     useEffect(() => {
         if (params.get("pack_id")) {
@@ -203,13 +203,13 @@ export default function Page() {
             return;
         }
         socket?.emit("join_pack_room", { "room_id": params.get("pack_id") });
-        socket?.on("workflow_update", (data: { stage: string }) => {
+        socket?.on("workflow_update", (data: { stage: string; }) => {
             // console.log("update:", data);
             resolveWorkflowStage(data.stage);
         });
         return () => {
             socket?.off("workflow_update");
-        }
+        };
     }, [socket, params.get("pack_id")]);
 
     if (isLoading || userLoading) {
@@ -372,7 +372,7 @@ export default function Page() {
                                             setSearchResults(resp.context_enriched.sources);
                                             setTimeout(() => setQueryRunning(false), 100);
                                             // console.log(resp["context_enriched"]);
-                                        })
+                                        });
                                     }}
                                 >
                                     <Input

@@ -1,4 +1,4 @@
-'use server'
+'use server';
 
 import { AdditionalInfo, Question, QuestionFilter } from "@/lib/types";
 import { Tag } from "emblor";
@@ -10,8 +10,8 @@ const uri = process.env.DB_URI || "unknown";
 const sql = postgres(uri, { connection: { application_name: "Jarvis" } });
 
 export interface ListQuestionsResp {
-    questions: Question[]
-    maxPageNo: number
+    questions: Question[];
+    maxPageNo: number;
 }
 
 function registerTransaction(operation: string, prevValue: string, currentValue: string, userId: string, questionId: string) {
@@ -32,7 +32,7 @@ export async function listQuestions(userId: string, packId: string, offset: numb
 }
 
 async function listQuestionsHandler(userId: string, packId: string, offset: number, filters: QuestionFilter | null, searchQuery: string | null) {
-    const backendUrl = process.env.BACKEND_URL;
+    const backendUrl = process.env.API_URL;
     const token = await getToken(userId);
     const batchSize = 10;
     let baseUrl = `${backendUrl}/api/v1/question-packs/${packId}/questions?offset=${offset}&limit=${batchSize}`;
@@ -73,8 +73,8 @@ async function listQuestionsHandler(userId: string, packId: string, offset: numb
 
 
 interface CreateQuestionResp {
-    id: string
-    question: string
+    id: string;
+    question: string;
 }
 
 export async function createQuestion(packId: string, question: string, userId: string) {
@@ -83,7 +83,7 @@ export async function createQuestion(packId: string, question: string, userId: s
 }
 
 async function createQuestionHandler(packId: string, question: string, userId: string) {
-    const backendUrl = process.env.BACKEND_URL;
+    const backendUrl = process.env.API_URL;
     const token = await getToken(userId);
     const resp = await fetch(
         `${backendUrl}/api/v1/question-packs/${packId}/questions`,
@@ -104,7 +104,7 @@ async function createQuestionHandler(packId: string, question: string, userId: s
 }
 
 interface DeleteQuestionResp {
-    id: string
+    id: string;
 }
 
 export async function deleteQuestion(questionId: string, userId: string, question: string) {
@@ -134,8 +134,8 @@ async function deleteQuestionHandler(questionId: string, userId: string, questio
 }
 
 interface UpdateAnswerResp {
-    id: string
-    answer: string
+    id: string;
+    answer: string;
 }
 
 export async function updateAnswer(questionId: string, answer: string, userId: string) {
@@ -177,8 +177,8 @@ async function updateAnswerHandler(questionId: string, answer: string, userId: s
 }
 
 interface UpdateQuestionResp {
-    id: string
-    question: string
+    id: string;
+    question: string;
 }
 
 export async function updateQuestion(questionId: string, question: string, userId: string) {
@@ -220,7 +220,7 @@ async function updateQuestionHandler(questionId: string, question: string, userI
 
 }
 export interface ListTagsResp {
-    tags: Tag[]
+    tags: Tag[];
 }
 
 export async function listTags(questionId: string) {
@@ -242,7 +242,7 @@ SELECT
                 return {
                     id: d.id,
                     text: d.tag,
-                } as Tag
+                } as Tag;
             })
         } as ListTagsResp;
     } catch (error) {
@@ -252,8 +252,8 @@ SELECT
 }
 
 interface CreateTagResp {
-    id: string
-    tag: string
+    id: string;
+    tag: string;
 }
 
 export async function createTag(questionId: string, tagId: string, tag: string, packId: string, userId: string) {
@@ -284,7 +284,7 @@ async function createTagHandler(questionId: string, tagId: string, tag: string, 
 }
 
 interface RemoveTagResp {
-    id: string
+    id: string;
 }
 
 export async function removeTag(questionId: string, tag: string, userId: string) {
@@ -312,7 +312,7 @@ async function removeTagHandler(questionId: string, tag: string, userId: string)
 }
 
 interface ListAdditionalInfoResp {
-    info: AdditionalInfo[]
+    info: AdditionalInfo[];
 }
 
 export async function listAdditionalInfo(questionId: string) {
@@ -338,7 +338,7 @@ async function listAdditionalInfoHandler(questionId: string) {
                     key: r.key,
                     value: r.value,
                     id: r.id,
-                } as AdditionalInfo
+                } as AdditionalInfo;
             }) as AdditionalInfo[]
         } as ListAdditionalInfoResp;
     } catch (error) {
@@ -348,12 +348,12 @@ async function listAdditionalInfoHandler(questionId: string) {
 }
 
 interface SaveAdditionalInfoResp {
-    info: AdditionalInfo[]
+    info: AdditionalInfo[];
 }
 
 export async function saveAdditionalInfo(questionId: string, info: AdditionalInfo[], userId: string, packId: string) {
     console.log("save additional info", questionId, info, userId);
-    const validInfo = info.filter((i) => Boolean(i.key.length)).map((i) => { return { "question_id": questionId, ...i, "pack_id": packId } });
+    const validInfo = info.filter((i) => Boolean(i.key.length)).map((i) => { return { "question_id": questionId, ...i, "pack_id": packId }; });
     if (!validInfo.length) {
         return {} as SaveAdditionalInfoResp;
     }
@@ -398,7 +398,7 @@ async function saveAdditionalInfoHandler(info: Record<string, string>[], userId:
 }
 
 interface RemoveAdditionalInfoResp {
-    id: string
+    id: string;
 }
 
 export async function removeAdditionalInfo(id: string, userId: string, questionId: string) {
@@ -440,7 +440,7 @@ async function removeAdditionalInfoHandler(id: string, userId: string, questionI
 }
 
 interface ListAdditionalInfoKeysResp {
-    keys: string[]
+    keys: string[];
 }
 
 export async function listAdditionalInfoKeys(packId: string) {
@@ -465,7 +465,7 @@ SELECT
 }
 
 interface ListAdditionalInfoValuesResp {
-    values: string[]
+    values: string[];
 }
 
 export async function listAdditinalInfoValues(key: string, packId: string) {
@@ -490,7 +490,7 @@ SELECT
 }
 
 interface ListAllTagsResp {
-    tags: string[]
+    tags: string[];
 }
 
 export async function listAllTags(packId: string) {
@@ -516,7 +516,7 @@ SELECT
 }
 
 interface GetQuestionHistoryResp {
-    history: Record<string, string>[]
+    history: Record<string, string>[];
 }
 
 export async function getQuestionHistory(questionId: string) {
@@ -535,7 +535,7 @@ async function getQuestionHistoryHandler(questionId: string) {
         FROM common.question_history
         WHERE question_id = ${questionId}
         ORDER BY created_at DESC
-    `
+    `;
     try {
         const resp = await getHistory;
         return { history: resp } as GetQuestionHistoryResp;
