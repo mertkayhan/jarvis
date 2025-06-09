@@ -190,7 +190,7 @@ export function UserMessage({
       {!streaming && (
         <div className="mb-2 flex w-full flex-row gap-x-2 text-slate-500 justify-start opacity-0 group-hover:opacity-100 ">
           <TooltipProvider>
-            <Tooltip>
+            {/* <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   // className="hover:text-blue-600"
@@ -242,7 +242,7 @@ export function UserMessage({
                 </button>
               </TooltipTrigger>
               <TooltipContent>Edit message</TooltipContent>
-            </Tooltip>
+            </Tooltip> */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
