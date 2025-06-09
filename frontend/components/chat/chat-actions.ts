@@ -35,15 +35,19 @@ export async function getToken(userId: string) {
 }
 
 export async function getBackendUrl() {
-    const url = process.env.BACKEND_URL;
+    const url = process.env.API_URL || process.env.WS_URL;
     if (!url) {
-        throw new Error('BACKEND_URL is not set!');
+        throw new Error('API_URL is not set!');
     }
     return url;
 }
 
 export async function getWSUrl() {
-    return getBackendUrl();
+    const url = process.env.WS_URL;
+    if (!url) {
+        throw new Error('WS_URL is not set!');
+    }
+    return url;
 }
 
 interface GetChatTitleResp {

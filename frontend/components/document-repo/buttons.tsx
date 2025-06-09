@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { Button } from "../ui/button";
@@ -15,21 +15,21 @@ import { useToast } from "@/lib/hooks/use-toast";
 import { uuidv4 } from "@/lib/utils";
 import { ToastAction } from "../ui/toast";
 import { useAuthToken } from "@/lib/hooks/use-auth-token";
-import { getBackendUrl } from "../chat/chat-actions";
+import { getBackendUrl, getWSUrl } from "../chat/chat-actions";
 
 interface UploadButtonProps {
-    uploadRunning: boolean
-    userId: string
-    setUploadRunning: Dispatch<SetStateAction<boolean>>
+    uploadRunning: boolean;
+    userId: string;
+    setUploadRunning: Dispatch<SetStateAction<boolean>>;
 }
 
 function useBackendUrl() {
     const [url, setUrl] = useState("");
     useEffect(() => {
         const getUrl = async () => {
-            const backendUrl = await getBackendUrl();
+            const backendUrl = await getWSUrl();
             setUrl(backendUrl);
-        }
+        };
         getUrl();
     }, []);
     return url;
@@ -201,7 +201,7 @@ export function UploadButton({ uploadRunning, userId, setUploadRunning }: Upload
 }
 
 interface DownloadButtonProps {
-    href: string
+    href: string;
 }
 
 export function DownloadButton({ href }: DownloadButtonProps) {
@@ -231,8 +231,8 @@ export function DownloadButton({ href }: DownloadButtonProps) {
 }
 
 interface DeleteButtonProps {
-    id: string
-    userId: string
+    id: string;
+    userId: string;
 }
 
 export function DeleteButton({ id, userId }: DeleteButtonProps) {
