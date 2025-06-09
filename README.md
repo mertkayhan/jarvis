@@ -12,11 +12,12 @@ Jarvis is an AI-powered conversational assistant designed for seamless knowledge
 
 ## Quick Start
 
-Coming soon
-
-## Deployment
-
-You can find deployment options under ```deployment``` directory.
+- Copy the environment file via ```cp .env.example .env ``` and add the necessary values (API keys, secrets, etc.)
+- Start the stack: ``` docker-compose up --build ```
+- Access to services:
+    - Frontend: http://localhost:3000
+    - Backend: http://localhost:8000
+    - MinIO Console: http://localhost:9001
 
 ## Modules
 

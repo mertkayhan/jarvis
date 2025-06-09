@@ -25,7 +25,7 @@ def validate_token(token: str) -> Claims:
         secret,
         algorithms=["HS256"],
         verify=True,
-        audience=os.getenv("AUTH0_AUDIENCE"),
+        audience=os.getenv("AUTH0_API_AUDIENCE"),
         issuer=os.getenv("CORS_ALLOWED_ORIGINS", "").split(";"),
         options={
             "verify_exp": True,
