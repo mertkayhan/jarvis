@@ -7,15 +7,14 @@ After installing the dependencies via ```poetry```, you can use ```python jarvis
 ## Infrastructure Dependecies
 
 - Running Postgres instance
-- Google Cloud Storage bucket
+- A bucket in S3 compatible storage
 
 ## Environment Variables
 
-### Auth0 Related 
-You can use [this](https://auth0.com/docs/quickstart/backend/python/01-authorization) guide to set Auth0 related environment variables.
+### JWT Auth Related 
 
-- AUTH0_DOMAIN: Can be obtained from the console
-- AUTH0_AUDIENCE: Can be obtained from the console
+- AUTH0_SECRET: Secret key for JWT signature verification
+- AUTH0_API_AUDIENCE: API audience for JWT token verification
 
 ### LLM Related
 
@@ -30,8 +29,13 @@ You can use [this](https://auth0.com/docs/quickstart/backend/python/01-authoriza
 
 ### Object Storage Related
 
-- GOOGLE_PROJECT: Google project id
-- DOCUMENT_BUCKET: Name of the Cloud Storage Bucket
+- DOCUMENT_BUCKET: Name of the storage bucket. It should either start with "s3://" or "gs://"
+
+For S3 compatible object stores following additional enviroment variables are included for flexibility:
+
+- AWS_ACCESS_KEY_ID: Access key ID or user name
+- AWS_SECRET_ACCESS_KEY: Secret access key or password
+- AWS_ENDPOINT_URL: Override default URL to point to a different provider
 
 ### API Related
 

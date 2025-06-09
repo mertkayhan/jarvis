@@ -8,7 +8,7 @@ Jarvis is an AI-powered conversational assistant designed for seamless knowledge
 
 - Backend: Utilizes Python, FastAPI, Socket.io, and LangGraph to handle AI interactions and real-time communication.
 
-- Infrastructure requirements: Running Postgres instance, a Cloud Storage bucket
+- Infrastructure requirements: Running Postgres instance, a bucket in S3 compatible storage
 
 ## Quick Start
 
