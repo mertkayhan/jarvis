@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { useEffect } from "react";
 import { Button } from "../ui/button";
@@ -32,7 +32,8 @@ export function ExistingDocumentPacks() {
     const { toast } = useToast();
     useEffect(() => {
         if (error) {
-            toast({ title: "Failed to list question packs", variant: "destructive" });
+            // toast({ title: "Failed to list question packs", variant: "destructive" });
+            console.error("Failed to list question packs");
         }
     }, [error]);
     const router = useRouter();
@@ -60,7 +61,7 @@ export function ExistingDocumentPacks() {
                     No document packs found
                 </span>
             </div>
-        )
+        );
     }
 
     return (
@@ -127,5 +128,5 @@ export function ExistingDocumentPacks() {
                 ))}
             </div>
         </div >
-    )
+    );
 }

@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "../ui/dialog";
 import { Button } from "../ui/button";
@@ -14,8 +14,8 @@ import { PlusCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface PersonalitiesProps {
-    userId: string
-    highlightStyle: string
+    userId: string;
+    highlightStyle: string;
 }
 
 export function Personalities({ userId, highlightStyle }: PersonalitiesProps) {
@@ -26,11 +26,12 @@ export function Personalities({ userId, highlightStyle }: PersonalitiesProps) {
     });
     const router = useRouter();
     // const { toast } = useToast();
-    // useEffect(() => {
-    //     if (error) {
-    //         toast({ title: "Failed to list personalities", variant: "destructive" });
-    //     }
-    // }, [error]);
+    useEffect(() => {
+        if (error) {
+            // toast({ title: "Failed to list personalities", variant: "destructive" });
+            console.error("Failed to list personalities");
+        }
+    }, [error]);
 
     return (
         <Dialog modal={false}>
@@ -84,7 +85,7 @@ export function Personalities({ userId, highlightStyle }: PersonalitiesProps) {
                                 {data.personalities.map((personality, i) => {
                                     return (
                                         <PersonalityView personality={personality} key={i} userId={userId} />
-                                    )
+                                    );
                                 })}
                             </div>
                         </div>
@@ -99,5 +100,5 @@ export function Personalities({ userId, highlightStyle }: PersonalitiesProps) {
                 }
             </DialogContent>
         </Dialog>
-    )
+    );
 }

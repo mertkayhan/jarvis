@@ -1,4 +1,4 @@
-'use client'
+'use client';
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
@@ -9,9 +9,6 @@ export default function VersionChecker() {
     const [newVersionAvailable, setNewVersionAvailable] = useState(false);
 
     useEffect(() => {
-        if (process.env.NEXT_PUBLIC_ENV !== "production") {
-            return;
-        }
         const checkForUpdate = async () => {
             try {
                 const response = await fetch("/version.json", { cache: "no-store" });

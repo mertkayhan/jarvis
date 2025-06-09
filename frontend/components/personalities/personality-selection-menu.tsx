@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { useQuery } from "@tanstack/react-query";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
@@ -11,9 +11,9 @@ import { ClipLoader } from "react-spinners";
 import { Personality } from "@/lib/types";
 
 interface PersonalitySelectionMenuProps {
-    title: string | undefined
-    userId: string
-    setSelectedPersonality: Dispatch<SetStateAction<Personality | undefined>>
+    title: string | undefined;
+    userId: string;
+    setSelectedPersonality: Dispatch<SetStateAction<Personality | undefined>>;
 }
 
 
@@ -26,10 +26,11 @@ export function PersonalitySelectionMenu({ title, userId, setSelectedPersonality
         enabled: !!userId,
     });
 
-    const { toast } = useToast();
+    // const { toast } = useToast();
     useEffect(() => {
         if (error) {
-            toast({ title: "Failed to list personalities", variant: "destructive" });
+            // toast({ title: "Failed to list personalities", variant: "destructive" });
+            console.error("failed to list personalities");
         }
     }, [error]);
 
@@ -67,18 +68,18 @@ export function PersonalitySelectionMenu({ title, userId, setSelectedPersonality
                                             onSelect={() => {
                                                 //console.log("selected", personality.name);
                                                 setSelectedPersonality(personality);
-                                                setTimeout(() => { setOpen(false) }, 100);
+                                                setTimeout(() => { setOpen(false); }, 100);
                                             }}
                                             key={i}
                                         >
                                             {personality.name}
                                         </CommandItem>
-                                    )
+                                    );
                                 })}
                         </CommandGroup>
                     </CommandList>
                 </div>
             </CommandDialog>
         </div>
-    )
+    );
 }

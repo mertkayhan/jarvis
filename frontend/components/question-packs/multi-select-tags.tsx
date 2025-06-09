@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { useToast } from "@/lib/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -13,9 +13,9 @@ import { listAllTags } from "./question-actions";
 import { QuestionFilter } from "@/lib/types";
 
 interface MultiSelectTagsProps {
-    packId?: string | null
-    filter: QuestionFilter
-    dispatch: Dispatch<any>
+    packId?: string | null;
+    filter: QuestionFilter;
+    dispatch: Dispatch<any>;
 }
 
 export function MultiSelectTags({ packId, filter, dispatch }: MultiSelectTagsProps) {
@@ -25,10 +25,11 @@ export function MultiSelectTags({ packId, filter, dispatch }: MultiSelectTagsPro
         queryFn: () => listAllTags(packId as string),
         enabled: !!packId
     });
-    const { toast } = useToast();
+    // const { toast } = useToast();
     useEffect(() => {
         if (error) {
-            toast({ title: "Failed to list tags", variant: "destructive" });
+            // toast({ title: "Failed to list tags", variant: "destructive" });
+            console.error("failed to list tags");
         }
     }, [error]);
 

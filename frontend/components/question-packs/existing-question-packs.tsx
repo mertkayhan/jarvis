@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { useEffect } from "react";
 import { deletePack, listPacks, ListPacksResp } from "./question-packs-actions";
@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { Skeleton } from "../ui/skeleton";
 
 interface ExistingQuestionPacksProps {
-    userId: string
+    userId: string;
 }
 
 
@@ -38,7 +38,8 @@ export function ExistingQuestionPacks({ userId }: ExistingQuestionPacksProps) {
 
     useEffect(() => {
         if (error) {
-            toast({ title: "Failed to list question packs", variant: "destructive" });
+            // toast({ title: "Failed to list question packs", variant: "destructive" });
+            console.error("failed to list question packs");
         }
     }, [error]);
 
@@ -55,7 +56,7 @@ export function ExistingQuestionPacks({ userId }: ExistingQuestionPacksProps) {
                     <Skeleton className="h-10" />
                 </div>
             </div>
-        )
+        );
     }
 
     if (!data?.packs.length) {
@@ -65,7 +66,7 @@ export function ExistingQuestionPacks({ userId }: ExistingQuestionPacksProps) {
                     No question packs found
                 </span>
             </div>
-        )
+        );
     }
 
     return (
@@ -133,5 +134,5 @@ export function ExistingQuestionPacks({ userId }: ExistingQuestionPacksProps) {
                     </div>))}
             </div>
         </div>
-    )
+    );
 }
