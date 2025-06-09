@@ -23,7 +23,12 @@ type CallBackendOptions = {
 };
 
 export async function callBackend<T = any>(options: CallBackendOptions): Promise<T> {
-  const backendUrl = process.env.API_URL;
+  const backendUrl = process.env.API_URL || process.env.WS_URL;
+
+  if (!backendUrl) {
+    throw new Error("API_URL is not set!");
+  }
+
   const token = await getToken(options.userId);
 
   const { endpoint, method = "GET", body, headers = {} } = options;
