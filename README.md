@@ -12,7 +12,7 @@ Jarvis is an AI-powered conversational assistant designed for seamless knowledge
 
 ## Quick Start
 
-- Copy the environment file via ```cp .env.example .env ``` and add the necessary values (API keys, secrets, etc.)
+- Copy the environment file via ```cp .env.example .env ``` and add the necessary values (API keys, secrets, etc.). You can find more detailed documentation on this in ```backend``` and ```frontend``` directories respectively.
 - Start the stack: ``` docker-compose up --build ```
 - Access to services:
     - Frontend: http://localhost:3000
