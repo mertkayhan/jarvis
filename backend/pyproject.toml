@@ -40,6 +40,8 @@ black = "==24.2.0"
 mypy = "==1.15.0"
 ipykernel = "^6.29.4"
 boto3-stubs = "==1.38.12"
+pytest = "==8.4.1"
+pytest-asyncio = "==1.0.0"
 
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
