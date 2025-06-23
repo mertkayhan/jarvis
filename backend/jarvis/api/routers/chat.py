@@ -1,12 +1,13 @@
 import asyncio
 import datetime
-from typing import List, Optional
+from typing import Any, List, Optional, Union
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 import logging
 from jarvis.chat.chat_title import create_chat_title
 from jarvis.db.db import get_connection_pool
+from jarvis.messages.type import MessageContent
 from jarvis.models.models import model_factory
 from jarvis.queries.query_handlers import (
     get_chat_model,
@@ -30,12 +31,15 @@ class AutoGenChatTitle(BaseModel):
 async def generate_chat_title(chat_id: str) -> AutoGenChatTitle:
     try:
         [chat_model, history] = await asyncio.gather(
-            get_chat_model(chat_id), get_message_history(chat_id)
+            *[get_chat_model(chat_id), get_message_history(chat_id)]
         )
         model = model_factory(chat_model, 0)  # type: ignore
-        title = await create_chat_title(model, history)
-        await update_chat_title(chat_id, title)
-        return AutoGenChatTitle(title=title)
+        if model and history and isinstance(history, list):
+            title = await create_chat_title(model, history)
+            await update_chat_title(chat_id, title)
+            return AutoGenChatTitle(title=title)
+        else:
+            raise TypeError(f"{model=} {history=}")
     except Exception as err:
         logger.error(f"failed to create chat title: {err}", exc_info=True)
         raise HTTPException(
@@ -252,15 +256,14 @@ async def get_chat_title(chat_id: str) -> ChatTitle:
 
 class ChatMessage(BaseModel):
     chatId: UUID
-    content: str
+    content: list[MessageContent]
     createdAt: datetime.datetime
-    data: Optional[str] = None
+    data: Optional[dict[str, Any]] = None
     id: UUID
     liked: Optional[bool] = None
     role: str
     score: Optional[float] = None
     updatedAt: datetime.datetime
-    content: str
 
 
 class MessageHistory(BaseModel):

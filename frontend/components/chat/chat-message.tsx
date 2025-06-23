@@ -60,15 +60,20 @@ export function ChatMessage({
   streaming,
   setCurrentContext,
 }: ChatMessageProps) {
-  const imgs: string[] =
-    (message.data && JSON.parse(message.data)["images"]) || [];
-  message.content = preprocessLaTeX(message.content);
+  const imgs: string[] = message.content
+    .filter((value) => value.logicalType === "image_url")
+    .map((v) => v.data);
+  //(message.data && JSON.parse(message.data)["images"]) || [];
+  const messageContent = message.content
+    .filter((value) => value.logicalType === "text")
+    .map((v) => preprocessLaTeX(v.data))
+    .join("");
 
   const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
 
   const onCopy = () => {
     if (isCopied) return;
-    copyToClipboard(message.content);
+    copyToClipboard(messageContent);
   };
   const [liked, setLike] = useState<boolean | null>(message.liked || null);
 
@@ -78,14 +83,15 @@ export function ChatMessage({
         <div className={cn("group relative flex items-start md:-ml-12")}>
           {message.role === "user" ? (
             <UserMessage
-              message={message}
+              message={messageContent}
               streaming={streaming}
               onCopy={onCopy}
               isCopied={isCopied as boolean}
             />
           ) : (
             <AIMessage
-              message={message}
+              message={messageContent}
+              messageObj={message}
               streaming={streaming}
               onCopy={onCopy}
               isCopied={isCopied as boolean}
@@ -155,7 +161,7 @@ export function ImgCarousel({ imgs, startIndex }: ImgCarouselProps) {
 }
 
 interface UserMessageProps {
-  message: Message;
+  message: string;
   streaming: boolean;
   onCopy: MouseEventHandler;
   isCopied: boolean;
@@ -169,7 +175,7 @@ export function UserMessage({
 }: UserMessageProps) {
   const [editable, setEditable] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [value, setValue] = useState(message.content);
+  const [value, setValue] = useState(message);
 
   return (
     <div className="flex-1 overflow-y-auto rounded-xl p-4 text-xs md:text-sm leading-6 text-slate-900 bg-background dark:text-slate-300 group">
@@ -293,7 +299,8 @@ export function UserMessage({
 }
 
 interface AIMessageProps {
-  message: Message;
+  message: string;
+  messageObj: Message;
   streaming: boolean;
   onCopy: MouseEventHandler;
   isCopied: boolean;
@@ -310,6 +317,7 @@ export function AIMessage({
   liked,
   setLike,
   setCurrentContext,
+  messageObj,
 }: AIMessageProps) {
   return (
     <>
@@ -321,7 +329,7 @@ export function AIMessage({
         </div>
         {!streaming && (
           <div className="mb-2 flex w-full flex-row justify-start gap-x-2 text-slate-500 opacity-0 group-hover:opacity-100">
-            {message.score && <Badge score={message.score} />}
+            {messageObj.score && <Badge score={messageObj.score} />}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -330,10 +338,10 @@ export function AIMessage({
                     onClick={() => {
                       if (!liked) {
                         setLike(true);
-                        updateMessageLike(message.id, true);
+                        updateMessageLike(messageObj.id, true);
                       } else {
                         setLike(null);
-                        updateMessageLike(message.id, null);
+                        updateMessageLike(messageObj.id, null);
                       }
                     }}
                   >
@@ -362,10 +370,10 @@ export function AIMessage({
                     onClick={() => {
                       if (liked === null || liked === true) {
                         setLike(false);
-                        updateMessageLike(message.id, false);
+                        updateMessageLike(messageObj.id, false);
                       } else {
                         setLike(null);
-                        updateMessageLike(message.id, null);
+                        updateMessageLike(messageObj.id, null);
                       }
                     }}
                   >
@@ -439,7 +447,7 @@ export function AIMessage({
                     type="button"
                     onClick={() => {
                       // console.log("ctx:", message.context)
-                      setCurrentContext(message.context);
+                      setCurrentContext(messageObj.context);
                     }}
                   >
                     <span className="sr-only">View context</span>
@@ -469,7 +477,7 @@ export function AIMessage({
 }
 
 interface MessageContainerProps {
-  message: Message;
+  message: string;
 }
 
 export function MessageContainer({ message }: MessageContainerProps) {
@@ -523,7 +531,7 @@ export function MessageContainer({ message }: MessageContainerProps) {
           },
         }}
       >
-        {message.content}
+        {message}
       </MemoizedReactMarkdown>
     </div>
   );

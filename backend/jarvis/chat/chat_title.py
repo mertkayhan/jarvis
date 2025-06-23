@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field
-from jarvis.messages.type import Message
 from models.models import Model
-from typing import Sequence
+from typing import Union
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -12,7 +11,9 @@ class ChatTitle(BaseModel):
     )
 
 
-async def create_chat_title(llm: Model, messages: Sequence[str]) -> str:
+async def create_chat_title(
+    llm: Model, messages: list[Union[HumanMessage, AIMessage]]
+) -> str:
     system = """
     You are an AI assistant that generates concise and descriptive chat titles based on the first two messages of a conversation.  
     - The title should capture the main topic or intent of the conversation.  
@@ -21,10 +22,7 @@ async def create_chat_title(llm: Model, messages: Sequence[str]) -> str:
     - Do not include "User" or "AI" in the title.  
     - If the topic is unclear, prioritize the most informative keyword or phrase.  
     """
-    messages_with_system_prompt = [("system", system)] + [
-        HumanMessage(content=m) if i % 2 == 0 else AIMessage(content=m)
-        for i, m in enumerate(messages)
-    ]
+    messages_with_system_prompt = [("system", system)] + messages
     prompt = ChatPromptTemplate.from_messages(messages_with_system_prompt)
 
     structured_llm = llm["model_impl"].with_structured_output(ChatTitle)

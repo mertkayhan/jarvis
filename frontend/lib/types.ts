@@ -1,17 +1,22 @@
-export interface Message extends Record<string, any> {
+export interface MessageContent {
+    logicalType: "text" | "image_url"
+    data: string
+}
+
+export interface Message {
     id: string
     chatId: string
     userId: string
     createdAt?: Date
-    content: string
+    content: MessageContent[]
     role: 'user' | 'assistant' | 'system'
-    data?: string
+    data?: Record<string, any>
     liked?: boolean
     score?: number
     context?: string
 }
 
-export interface UserChat extends Record<string, any> {
+export interface UserChat {
     id: string
     title: string | null
     createdAt: Date
@@ -22,7 +27,7 @@ export interface UserChat extends Record<string, any> {
     sharePath?: string
 }
 
-export interface Question extends Record<string, any> {
+export interface Question {
     id: string
     metadata?: string
     question: string

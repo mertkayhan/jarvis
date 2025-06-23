@@ -1,6 +1,5 @@
 import json
-import os
-from typing import Dict, List, Optional, Sequence, Set
+from typing import List, Optional, Sequence, Set, Union, cast
 import logging
 from uuid import uuid4
 from psycopg import AsyncConnection
@@ -8,8 +7,11 @@ from psycopg.rows import dict_row
 from jarvis.blob_storage import resolve_storage
 from jarvis.db.db import get_connection_pool
 from dotenv import load_dotenv
-
+from psycopg.types.json import Jsonb
+from jarvis.messages.type import Message
+from jarvis.messages.utils import convert_to_langchain_message
 from jarvis.models.models import get_default_model
+from langchain_core.messages import AIMessage, HumanMessage
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -34,7 +36,7 @@ async def create_chat(chat_id: str, owner_id: str):
                 await cur.execute(query, (chat_id, owner_id, []))
 
 
-async def create_message(data: Dict[str, str], chat_id: str):
+async def create_message(msg: Message):
     query = """
     INSERT INTO common.message_history (
         chat_id, content, id, role, data, score, context
@@ -51,13 +53,13 @@ async def create_message(data: Dict[str, str], chat_id: str):
                 await cur.execute(
                     query,
                     {
-                        "id": data["id"],
-                        "content": data["content"],
-                        "chat_id": chat_id,
-                        "role": data["role"],
-                        "data": data["data"],
-                        "score": data.get("score"),
-                        "context": data.get("context"),
+                        "id": msg["id"],
+                        "content": Jsonb(msg["content"]),
+                        "chat_id": msg["chatId"],
+                        "role": msg["role"],
+                        "data": Jsonb(msg.get("data")),
+                        "score": msg.get("score"),
+                        "context": msg.get("context"),
                     },
                 )
 
@@ -287,9 +289,10 @@ async def update_chat_title(id: str, title: str):
                 )
 
 
-async def get_message_history(chat_id: str) -> Sequence[str]:
+async def get_message_history(chat_id: str) -> list[Union[AIMessage, HumanMessage]]:
     query = """
     SELECT 
+        role,
         content
     FROM common.message_history
     WHERE chat_id = (%s) AND role IN ('assistant', 'user')
@@ -303,7 +306,10 @@ async def get_message_history(chat_id: str) -> Sequence[str]:
             resp = await cur.execute(query, (chat_id,))
             res = await resp.fetchall()
 
-    return [r["content"] for r in res]
+    return cast(
+        list[Union[AIMessage, HumanMessage]],
+        [convert_to_langchain_message(cast(Message, r)) for r in res],
+    )
 
 
 async def get_doc_tokens(doc_ids: List[str]):
