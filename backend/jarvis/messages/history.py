@@ -51,33 +51,36 @@ class HistoryHandler:
     def deletion_worker_running(self):
         return any(task.get_name() == "deletion_worker" for task in asyncio.all_tasks())
 
+    def get_chat_history(self, chat_id: str):
+        return self._state.get(chat_id)
+
     async def add_message(self, chat_id: str, message: dict[str, Any]):
-        if not self.deletion_worker_running:
-            await self.start_deletion_worker()
         async with self._lock:
+            if not self.deletion_worker_running:
+                await self.start_deletion_worker()
             if chat_id in self._state:
                 self._state[chat_id].add_message(message)
                 self._state.move_to_end(chat_id)
 
     async def remove_message(self, chat_id: str, message_id: str):
-        if not self.deletion_worker_running:
-            await self.start_deletion_worker()
         async with self._lock:
+            if not self.deletion_worker_running:
+                await self.start_deletion_worker()
             if chat_id in self._state and message_id in self._state[chat_id]:
                 del self._state[chat_id][message_id]
                 self._state.move_to_end(chat_id)
 
     async def add_chat(self, chat_id: str, system_message: Optional[str] = None):
-        if not self.deletion_worker_running:
-            await self.start_deletion_worker()
         async with self._lock:
+            if not self.deletion_worker_running:
+                await self.start_deletion_worker()
             if chat_id not in self._state:
                 self._state[chat_id] = ChatHistory(system_message=system_message)
 
     async def add_system_message(self, chat_id: str, system_message: str):
-        if not self.deletion_worker_running:
-            await self.start_deletion_worker()
         async with self._lock:
+            if not self.deletion_worker_running:
+                await self.start_deletion_worker()
             if chat_id in self._state:
                 self._state[chat_id].add_system_message(system_message)
 
@@ -85,23 +88,24 @@ class HistoryHandler:
         pass
 
     async def unload_chat(self, chat_id: str):
-        if not self.deletion_worker_running:
-            await self.start_deletion_worker()
         async with self._lock:
+            if not self.deletion_worker_running:
+                await self.start_deletion_worker()
             if chat_id in self._state:
                 self._state[chat_id].add_deletion_timestamp()
                 self._state.move_to_end(chat_id, last=False)
 
     async def _deletion_worker(self):
-        keys = list(self._state.keys())
-        now = datetime.datetime.now(datetime.timezone.utc)
+        async with self._lock:
+            keys = list(self._state.keys())
+            now = datetime.datetime.now(datetime.timezone.utc)
 
-        for key in keys:
-            # keys are ordered
-            if self._state[key].deletion_timestamp is None:
-                break
-            if cast(datetime.datetime, self._state[key].deletion_timestamp) <= now:
-                del self._state[key]
+            for key in keys:
+                # keys are ordered
+                if self._state[key].deletion_timestamp is None:
+                    break
+                if cast(datetime.datetime, self._state[key].deletion_timestamp) <= now:
+                    del self._state[key]
 
     async def deletion_worker(self):
         while True:

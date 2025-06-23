@@ -1,23 +1,30 @@
-'use client';
+"use client";
 
-import { Dispatch, MutableRefObject, SetStateAction, useState } from 'react';
-import { uuidv4 } from '@/lib/utils';
-import { DocumentPack, Message, Personality, QuestionPack, UserChat } from '@/lib/types';
-import { ChatInput } from '@/components/chat/chat-input';
-import imageCompression from 'browser-image-compression';
-import { useQueryClient } from '@tanstack/react-query';
-import { ListChatsResp } from '../chat-sidebar/chat-sidebar-actions';
+import { Dispatch, MutableRefObject, SetStateAction, useState } from "react";
+import { uuidv4 } from "@/lib/utils";
+import {
+  DocumentPack,
+  Message,
+  Personality,
+  QuestionPack,
+  UserChat,
+} from "@/lib/types";
+import { ChatInput } from "@/components/chat/chat-input";
+import imageCompression from "browser-image-compression";
+import { useQueryClient } from "@tanstack/react-query";
+import { ListChatsResp } from "../chat-sidebar/chat-sidebar-actions";
+import { MessageContent } from "../../lib/types";
 
 export interface ChatPanelProps {
   id: string;
   title?: string;
   isLoading: boolean;
-  stop: () => void,
-  append: (m: Message) => void,
-  reload: () => void,
-  input: string,
-  setInput: Dispatch<SetStateAction<string>>,
-  messageCount: number,
+  stop: () => void;
+  append: (m: Message) => void;
+  reload: () => void;
+  input: string;
+  setInput: Dispatch<SetStateAction<string>>;
+  messageCount: number;
   userId: string;
   path: string;
   selectedPersonality: Personality | undefined;
@@ -47,7 +54,7 @@ export function ChatPanel({
   dispatch,
   selectedDocumentPack,
   setSelectedQuestionPack,
-  setSelectedDocumentPack
+  setSelectedDocumentPack,
 }: ChatPanelProps) {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [selectedPreviews, setSelectedPreviews] = useState<string[]>([]);
@@ -84,13 +91,15 @@ export function ChatPanel({
               const options = {
                 maxSizeMB: 0.5, // Reduce to 500 KB
                 maxWidthOrHeight: 1024, // Resize if needed
-                useWebWorker: true
+                useWebWorker: true,
               };
-
 
               for (let i = 0; i < selectedImages.length; i++) {
                 try {
-                  const compressedImage = await imageCompression(selectedImages[i], options);
+                  const compressedImage = await imageCompression(
+                    selectedImages[i],
+                    options
+                  );
                   const res = await readFileAsync(compressedImage);
                   imgs.push(res);
                 } catch (error) {
@@ -99,36 +108,48 @@ export function ChatPanel({
               }
               append({
                 id: msgId,
-                content: value,
+                content: [
+                  { logicalType: "text", data: value },
+                  ...imgs.map((i) => {
+                    return {
+                      logicalType: "image_url",
+                      data: i,
+                    } as MessageContent;
+                  }),
+                ],
                 chatId: id,
                 userId: userId,
-                role: 'user',
-                data: JSON.stringify({
-                  "chat_id": id,
-                  "images": imgs,
-                  "user_id": userId,
-                  "personality": selectedPersonality,
-                  "docs": Array.from(new Set([...selectedDocuments, ...additionalDocs])),
-                  "first_message": messageCount === 0,
-                  "detect_hallucination": detectHallucination,
-                  "question_pack": selectedQuestionPack,
-                  "document_pack": selectedDocumentPack,
-                })
+                role: "user",
+                data: {
+                  personality: selectedPersonality,
+                  docs: Array.from(
+                    new Set([...selectedDocuments, ...additionalDocs])
+                  ),
+                  first_message: messageCount === 0,
+                  detect_hallucination: detectHallucination,
+                  question_pack: selectedQuestionPack,
+                  document_pack: selectedDocumentPack,
+                },
               });
               dispatch({ type: "UPDATE_CHAT_STATUS", id: id, status: true });
               if (messageCount === 0) {
-                await queryClient.setQueryData(["listChats", userId], (old: ListChatsResp) => {
-                  return {
-                    chats: [{
-                      createdAt: new Date(),
-                      updatedAt: new Date(),
-                      title: null,
-                      id: id,
-                      userId: userId,
-                    } as UserChat,
-                    ...old.chats]
-                  };
-                });
+                await queryClient.setQueryData(
+                  ["listChats", userId],
+                  (old: ListChatsResp) => {
+                    return {
+                      chats: [
+                        {
+                          createdAt: new Date(),
+                          updatedAt: new Date(),
+                          title: null,
+                          id: id,
+                          userId: userId,
+                        } as UserChat,
+                        ...old.chats,
+                      ],
+                    };
+                  }
+                );
               }
               setSelectedImages([]);
               setSelectedPreviews([]);

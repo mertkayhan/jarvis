@@ -1,16 +1,19 @@
-from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Literal, Optional, TypedDict
 
 
-@dataclass
-class Message:
+class MessageContent(TypedDict):
+    logicalType: Literal["text", "image_url"]  # TODO: extend this
+    data: str
+
+
+class Message(TypedDict):
     id: str
     chatId: str
     userId: str
     createdAt: str
-    content: str
-    data: Optional[str] = None
-    role: str = "assistant"
-    score: Optional[float] = None
-    liked: Optional[bool] = None
-    context: Optional[str] = None
+    content: list[MessageContent]
+    data: Optional[dict[str, Any]]
+    role: Literal["assistant", "user", "tool", "system"]
+    score: Optional[float]
+    liked: Optional[bool]
+    context: Optional[str]
