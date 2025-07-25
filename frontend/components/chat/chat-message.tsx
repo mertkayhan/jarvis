@@ -61,12 +61,12 @@ export function ChatMessage({
   setCurrentContext,
 }: ChatMessageProps) {
   const imgs: string[] = message.content
-    .filter((value) => value.logicalType === "image_url")
-    .map((v) => v.data);
+    .filter((value) => value.type === "image_url")
+    .map((v) => v.image_url.url);
   //(message.data && JSON.parse(message.data)["images"]) || [];
   const messageContent = message.content
-    .filter((value) => value.logicalType === "text")
-    .map((v) => preprocessLaTeX(v.data))
+    .filter((value) => value.type === "text")
+    .map((v) => preprocessLaTeX(v.text))
     .join("");
 
   const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
@@ -80,6 +80,20 @@ export function ChatMessage({
   return (
     <div>
       <div className="flex flex-col flex-1">
+        <Dialog>
+          <div className="grid grid-cols-6 gap-2">
+            {imgs.map((img, index) => (
+              <DialogTrigger key={index} asChild>
+                <button key={index}>
+                  <Image src={img} alt="img" height={150} width={150} />
+                </button>
+              </DialogTrigger>
+            ))}
+          </div>
+          <DialogContent className="max-w-none w-full h-full flex flex-col items-center justify-center bg-background/50">
+            <ImgCarousel imgs={imgs} startIndex={0} />
+          </DialogContent>
+        </Dialog>
         <div className={cn("group relative flex items-start md:-ml-12")}>
           {message.role === "user" ? (
             <UserMessage
@@ -102,20 +116,6 @@ export function ChatMessage({
           )}
         </div>
       </div>
-      <Dialog>
-        <div className="grid grid-cols-6 gap-2">
-          {imgs.map((img, index) => (
-            <DialogTrigger key={index} asChild>
-              <button key={index}>
-                <Image src={img} alt="img" height={150} width={150} />
-              </button>
-            </DialogTrigger>
-          ))}
-        </div>
-        <DialogContent className="max-w-none w-full h-full flex flex-col items-center justify-center bg-background/50">
-          <ImgCarousel imgs={imgs} startIndex={0} />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

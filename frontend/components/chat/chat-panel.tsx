@@ -1,6 +1,6 @@
 "use client";
 
-import { Dispatch, MutableRefObject, SetStateAction, useState } from "react";
+import { Dispatch, SetStateAction, useState } from "react";
 import { uuidv4 } from "@/lib/utils";
 import {
   DocumentPack,
@@ -13,7 +13,7 @@ import { ChatInput } from "@/components/chat/chat-input";
 import imageCompression from "browser-image-compression";
 import { useQueryClient } from "@tanstack/react-query";
 import { ListChatsResp } from "../chat-sidebar/chat-sidebar-actions";
-import { MessageContent } from "../../lib/types";
+import { TextContent, ImageContent } from "../../lib/types";
 
 export interface ChatPanelProps {
   id: string;
@@ -109,12 +109,12 @@ export function ChatPanel({
               append({
                 id: msgId,
                 content: [
-                  { logicalType: "text", data: value },
+                  { type: "text", text: value } as TextContent,
                   ...imgs.map((i) => {
                     return {
-                      logicalType: "image_url",
-                      data: i,
-                    } as MessageContent;
+                      type: "image_url",
+                      image_url: { url: i },
+                    } as ImageContent;
                   }),
                 ],
                 chatId: id,

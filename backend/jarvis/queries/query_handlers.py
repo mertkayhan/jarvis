@@ -1,5 +1,6 @@
 import json
-from typing import List, Optional, Sequence, Set, Union, cast
+import os
+from typing import Any, Dict, List, Optional, Sequence, Set, Union, cast
 import logging
 from uuid import uuid4
 from psycopg import AsyncConnection
@@ -36,7 +37,7 @@ async def create_chat(chat_id: str, owner_id: str):
                 await cur.execute(query, (chat_id, owner_id, []))
 
 
-async def create_message(msg: Message):
+async def create_message(data: Message):
     query = """
     INSERT INTO common.message_history (
         chat_id, content, id, role, data, score, context
@@ -53,13 +54,13 @@ async def create_message(msg: Message):
                 await cur.execute(
                     query,
                     {
-                        "id": msg["id"],
-                        "content": Jsonb(msg["content"]),
-                        "chat_id": msg["chatId"],
-                        "role": msg["role"],
-                        "data": Jsonb(msg.get("data")),
-                        "score": msg.get("score"),
-                        "context": msg.get("context"),
+                        "id": data["id"],
+                        "content": Jsonb(data["content"]),
+                        "chat_id": data["chatId"],
+                        "role": data["role"],
+                        "data": Jsonb(data.get("data")),
+                        "score": data.get("score"),
+                        "context": data.get("context"),
                     },
                 )
 

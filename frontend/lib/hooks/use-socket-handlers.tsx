@@ -179,7 +179,7 @@ export function useSocketHandlers(
       if (!resp) {
         return;
       }
-      if (resp.content && resp.content[0].data === "<done>") {
+      if (resp.content && "text" in resp.content[0] && resp.content[0].text === "<done>") {
         dispatch({
           type: "UPDATE_CHAT_STATUS",
           id: resp.chatId,

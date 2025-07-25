@@ -1,11 +1,10 @@
 from __future__ import annotations
-from typing import Coroutine, Optional
+from typing import Coroutine, Optional, cast
 import socketio
 from jarvis.auth.auth import validate_token
 from jarvis.context import Context
 from jarvis.context.context import FaithfullnessParams
-from jarvis.messages.history import HistoryHandler
-from jarvis.messages.type import Message, MessageContent
+from jarvis.messages.type import Message, TextContent
 from jarvis.messages.utils import convert_to_langchain_message
 from jarvis.models.models import get_default_model
 from jarvis.queries.query_handlers import create_message
@@ -30,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 class Base(socketio.AsyncNamespace, ABC):
     model_name = get_default_model()
-    history_handler = HistoryHandler()
 
     @abstractmethod
     async def on_chat_message(self, sid, data):
@@ -66,7 +64,6 @@ class Base(socketio.AsyncNamespace, ABC):
         logger.debug("sess", sess)
         rooms = self.rooms(sid, self.namespace)
         for room in rooms:
-            await self.history_handler.unload_chat(room, sid)
             await self.leave_room(sid, room, namespace=self.namespace)
 
     async def stream_response(
@@ -86,11 +83,15 @@ class Base(socketio.AsyncNamespace, ABC):
                     chunk["type"]["logical_type"] == "on_tool_start"
                     and len(resp["content"]) > 0
                 ):
-                    resp["content"][-1]["data"] += "\n" + chunk["data"]
+                    cast(TextContent, resp["content"][-1])["text"] += (
+                        "\n" + chunk["data"]
+                    )
                 else:
-                    resp["content"][-1]["data"] += chunk["data"]
+                    cast(TextContent, resp["content"][-1])["text"] += chunk["data"]
             elif isinstance(chunk["data"], list) and "text" in chunk["data"][0]:
-                resp["content"][-1]["data"] += chunk["data"][0]["text"]
+                cast(TextContent, resp["content"][-1])["text"] += chunk["data"][0][
+                    "text"
+                ]
             await self.emit(
                 "server_message",
                 resp,
@@ -112,8 +113,8 @@ class Base(socketio.AsyncNamespace, ABC):
             retrieved_contexts=retrieved_context,
             response="".join(
                 map(
-                    lambda x: x["data"],
-                    filter(lambda x: x["logicalType"] == "text", resp["content"]),
+                    lambda x: cast(TextContent, x)["text"],
+                    filter(lambda x: x["type"] == "text", resp["content"]),
                 )
             ),
         )
@@ -168,9 +169,9 @@ class Base(socketio.AsyncNamespace, ABC):
         except Exception as err:
             logger.error(f"Unexpected error: {err}", exc_info=True)
             resp["content"] = [
-                MessageContent(
-                    data=f"Internal error: {err}.\n\n**Please include this error message when reporting the error.**",
-                    logicalType="text",
+                TextContent(
+                    text=f"Internal error: {err}.\n\n**Please include this error message when reporting the error.**",
+                    type="text",
                 )
             ]
             await self.emit(
@@ -178,12 +179,11 @@ class Base(socketio.AsyncNamespace, ABC):
             )
         finally:
             await create_message(resp)
-            await self.history_handler.add_message(chat_id, resp, sid)
             logger.info("task done")
             return await self.emit(
                 "server_message",
                 {
-                    "content": [MessageContent(logicalType="text", data="<done>")],
+                    "content": [TextContent(type="text", text="<done>")],
                     "chatId": chat_id,
                 },
                 room=chat_id,

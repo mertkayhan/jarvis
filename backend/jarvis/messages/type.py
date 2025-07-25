@@ -1,9 +1,21 @@
-from typing import Any, Literal, Optional, TypedDict
+from typing import Any, Literal, Optional, TypedDict, Union
 
 
-class MessageContent(TypedDict):
-    logicalType: Literal["text", "image_url"]  # TODO: extend this
-    data: str
+class TextContent(TypedDict):
+    type: str
+    text: str
+
+
+class ImageUrl(TypedDict):
+    url: str
+
+
+class ImageContent(TypedDict):
+    type: str
+    image_url: ImageUrl
+
+
+MessageContent = Union[TextContent, ImageContent]
 
 
 class Message(TypedDict):
