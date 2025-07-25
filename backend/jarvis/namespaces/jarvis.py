@@ -5,7 +5,6 @@ from jarvis.graphrag.graphrag import query_documents
 import logging
 from dotenv import load_dotenv
 from jarvis.graphrag.workflow import execute_workflow
-from jarvis.messages.history import HistoryHandler
 from jarvis.messages.type import Message
 from jarvis.messages.utils import (
     build_system_message,
@@ -39,7 +38,6 @@ logger = logging.getLogger(__name__)
 
 
 class Jarvis(Base):
-    history_handler = HistoryHandler()
 
     async def on_join_pack_room(self, sid, data):
         logger.info(f"{sid} requesting to join room for pack {data['room_id']}")
@@ -126,6 +124,7 @@ class Jarvis(Base):
 
         # persist user message
         await create_message(data)
+        await self.history_handler.add_message(chat_id, data, sid)
 
         # start AI message generation
         chat_model: Optional[str] = await get_chat_model(chat_id)
@@ -161,6 +160,7 @@ class Jarvis(Base):
             messages[0]["role"] = "user"
         stream_future = self.stream_response(app, messages, resp, chat_id)
         await self.task_runner(
+            sid,
             stream_future,
             chat_id,
             resp,
@@ -233,6 +233,7 @@ class Jarvis(Base):
             f"{instruction}\n\nDOCUMENTS:\n\n{docs}" if len(docs) > 0 else instruction
         )
         system_message = build_system_message(system_message_content, chat_id, user_id)
+        await self.history_handler.add_system_message(chat_id, system_message)
         messages.append(system_message)
         create_message_future = create_message(system_message)
         update_chat_future = update_chat(chat_id, personality, chat_doc_ids)
@@ -268,6 +269,4 @@ class Jarvis(Base):
             create_message_future = create_message(new_system_message)
             update_chat_future = update_chat(chat_id, personality, chat_doc_ids)
             await asyncio.gather(create_message_future, update_chat_future)
-            await self.history_handler.add_system_message(
-                chat_id, new_system_message_content
-            )
+            await self.history_handler.add_system_message(chat_id, new_system_message)

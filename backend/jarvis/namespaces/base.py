@@ -4,8 +4,10 @@ import socketio
 from jarvis.auth.auth import validate_token
 from jarvis.context import Context
 from jarvis.context.context import FaithfullnessParams
+from jarvis.messages.history import HistoryHandler
 from jarvis.messages.type import Message, MessageContent
 from jarvis.messages.utils import convert_to_langchain_message
+from jarvis.models.models import get_default_model
 from jarvis.queries.query_handlers import create_message
 import logging
 from dotenv import load_dotenv
@@ -27,7 +29,8 @@ logger = logging.getLogger(__name__)
 
 
 class Base(socketio.AsyncNamespace, ABC):
-    model_name = "gpt-4o"
+    model_name = get_default_model()
+    history_handler = HistoryHandler()
 
     @abstractmethod
     async def on_chat_message(self, sid, data):
@@ -63,6 +66,7 @@ class Base(socketio.AsyncNamespace, ABC):
         logger.debug("sess", sess)
         rooms = self.rooms(sid, self.namespace)
         for room in rooms:
+            await self.history_handler.unload_chat(room, sid)
             await self.leave_room(sid, room, namespace=self.namespace)
 
     async def stream_response(
@@ -125,6 +129,7 @@ class Base(socketio.AsyncNamespace, ABC):
 
     async def task_runner(
         self,
+        sid: str,
         stream_future: Coroutine,
         chat_id: str,
         resp: Message,
@@ -158,8 +163,6 @@ class Base(socketio.AsyncNamespace, ABC):
                     room=chat_id,
                     namespace=self.namespace,
                 )
-            await create_message(resp)
-            logger.info("task done")
         except asyncio.CancelledError:
             logger.info("Successfully cancelled task")
         except Exception as err:
@@ -174,6 +177,9 @@ class Base(socketio.AsyncNamespace, ABC):
                 "server_message", resp, room=chat_id, namespace=self.namespace
             )
         finally:
+            await create_message(resp)
+            await self.history_handler.add_message(chat_id, resp, sid)
+            logger.info("task done")
             return await self.emit(
                 "server_message",
                 {

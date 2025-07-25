@@ -3,17 +3,23 @@ import datetime
 from typing import Any, Optional, cast
 import asyncio
 
+from jarvis.messages.type import Message
+
 
 class ChatHistory:
-    def __init__(self, system_message: Optional[str] = None):
-        self.system_message: Optional[str] = system_message
+    def __init__(self, system_message: Optional[Message] = None):
+        self.system_message: Optional[Message] = system_message
         self.messages: defaultdict[str, list] = defaultdict(list)
         self.deletion_timestamp: Optional[datetime.datetime] = None
+        # chats can be shared - set of session ids to store subscribers to a chat
+        self.subscribers: set[str] = set()
+        self.lock = asyncio.Lock()
 
     def __str__(self) -> str:
         return f"system_message={self.system_message} messages={self.messages} deletion_timestamp={self.deletion_timestamp}"
 
-    def add_message(self, message: dict[str, Any]):
+    async def add_message(self, message: Message, sid: str):
+        await self.add_subscribers(sid)
         self.messages[message["id"]].append(message)
 
     def __getitem__(self, message_id: str) -> list:
@@ -26,14 +32,22 @@ class ChatHistory:
         if message_id in self.messages:
             del self.messages[message_id]
 
-    def add_system_message(self, system_message: str):
+    def add_system_message(self, system_message: Message):
         self.system_message = system_message
 
-    def add_deletion_timestamp(self):
-        if not self.deletion_timestamp:
-            self.deletion_timestamp = datetime.datetime.now(
-                datetime.timezone.utc
-            ) + datetime.timedelta(minutes=15)
+    async def add_deletion_timestamp(self, sid: str):
+        async with self.lock:
+            await self.remove_subscribers(sid)
+            if len(self.subscribers) == 0 and not self.deletion_timestamp:
+                self.deletion_timestamp = datetime.datetime.now(
+                    datetime.timezone.utc
+                ) + datetime.timedelta(minutes=15)
+
+    async def add_subscribers(self, sid: str):
+        self.subscribers.add(sid)
+
+    async def remove_subscribers(self, sid: str):
+        self.subscribers.discard(sid)
 
 
 class HistoryHandler:
@@ -54,12 +68,12 @@ class HistoryHandler:
     def get_chat_history(self, chat_id: str):
         return self._state.get(chat_id)
 
-    async def add_message(self, chat_id: str, message: dict[str, Any]):
+    async def add_message(self, chat_id: str, message: Message, sid: str):
         async with self._lock:
             if not self.deletion_worker_running:
                 await self.start_deletion_worker()
             if chat_id in self._state:
-                self._state[chat_id].add_message(message)
+                await self._state[chat_id].add_message(message, sid)
                 self._state.move_to_end(chat_id)
 
     async def remove_message(self, chat_id: str, message_id: str):
@@ -70,14 +84,14 @@ class HistoryHandler:
                 del self._state[chat_id][message_id]
                 self._state.move_to_end(chat_id)
 
-    async def add_chat(self, chat_id: str, system_message: Optional[str] = None):
+    async def add_chat(self, chat_id: str, system_message: Optional[Message] = None):
         async with self._lock:
             if not self.deletion_worker_running:
                 await self.start_deletion_worker()
             if chat_id not in self._state:
                 self._state[chat_id] = ChatHistory(system_message=system_message)
 
-    async def add_system_message(self, chat_id: str, system_message: str):
+    async def add_system_message(self, chat_id: str, system_message: Message):
         async with self._lock:
             if not self.deletion_worker_running:
                 await self.start_deletion_worker()
@@ -87,12 +101,12 @@ class HistoryHandler:
     def load_chat(self, chat_id: str):
         pass
 
-    async def unload_chat(self, chat_id: str):
+    async def unload_chat(self, chat_id: str, sid: str):
         async with self._lock:
             if not self.deletion_worker_running:
                 await self.start_deletion_worker()
             if chat_id in self._state:
-                self._state[chat_id].add_deletion_timestamp()
+                await self._state[chat_id].add_deletion_timestamp(sid)
                 self._state.move_to_end(chat_id, last=False)
 
     async def _deletion_worker(self):
