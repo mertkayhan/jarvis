@@ -3,7 +3,7 @@
 
 "use client";
 
-import { Message } from "@/lib/types";
+import { ImageContent, Message } from "@/lib/types";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -62,7 +62,7 @@ export function ChatMessage({
 }: ChatMessageProps) {
   const imgs: string[] = message.content
     .filter((value) => value.type === "image_url")
-    .map((v) => v.image_url.url);
+    .map((v) => (v as ImageContent).image_url.url);
   //(message.data && JSON.parse(message.data)["images"]) || [];
   const messageContent = message.content
     .filter((value) => value.type === "text")
