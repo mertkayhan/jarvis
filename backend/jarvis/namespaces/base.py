@@ -14,7 +14,7 @@ import json
 import asyncio
 from abc import ABC, abstractmethod
 from jarvis.agent.base import runner
-from langgraph.graph.graph import CompiledGraph
+from langgraph.graph.state import CompiledStateGraph
 from ragas import SingleTurnSample
 from ragas.metrics import Faithfulness
 from ragas.llms import LangchainLLMWrapper
@@ -68,7 +68,7 @@ class Base(socketio.AsyncNamespace, ABC):
 
     async def stream_response(
         self,
-        app: CompiledGraph,
+        app: CompiledStateGraph,
         messages: list[Message],
         resp: Message,
         chat_id: str,

@@ -11,6 +11,7 @@ from jarvis.messages.utils import (
     convert_to_langchain_message,
     new_server_message,
 )
+from jarvis.models import ALL_SUPPORTED_MODELS
 from jarvis.tools.tools import bootstrap_tools
 from jarvis.agent.base import build_graph
 from jarvis.namespaces import Base
@@ -128,7 +129,7 @@ class Jarvis(Base):
         chat_model: Optional[str] = await get_chat_model(chat_id)
         logger.info(f"{chat_model=}")
         model_selection = ""
-        if not chat_model:
+        if not chat_model or chat_model not in ALL_SUPPORTED_MODELS:
             model_selection: str = await get_model_selection(user_id)
         sess = await self.get_session(sid, self.namespace)
         model = model_factory(
@@ -176,7 +177,6 @@ class Jarvis(Base):
         )
         # finalize and wrap things up
         if additional_data.get("first_message"):
-            print("messages", messages)
             # create automatic chat title
             title = await create_chat_title(
                 model, [convert_to_langchain_message(messages[1]), convert_to_langchain_message(resp)]  # type: ignore

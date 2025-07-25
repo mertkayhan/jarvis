@@ -148,7 +148,11 @@ async def get_user_model_selection(req: Request) -> UserModel:
                 resp = await cur.execute(query, (user_id,))
                 res = await resp.fetchall()
                 return UserModel(
-                    model=res[0]["model_name"] if res else get_default_model()
+                    model=(
+                        res[0]["model_name"]
+                        if res and res[0]["model_name"] in ALL_SUPPORTED_MODELS
+                        else get_default_model()
+                    )
                 )
     except Exception as err:
         logger.error(f"failed to get user model: {err}", exc_info=True)

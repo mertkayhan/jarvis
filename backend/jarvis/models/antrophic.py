@@ -3,8 +3,10 @@ from langchain_anthropic import ChatAnthropic
 
 SUPPORTED_MODELS = (
     {
-        "claude-3-5-sonnet-20241022": {"temperature": 0},
-        "claude-3-7-sonnet-20250219": {"temperature": 0},
+        "claude-3-5-sonnet-latest": {"temperature": 0},
+        "claude-3-7-sonnet-latest": {"temperature": 0},
+        "claude-opus-4-20250514": {"temperature": 0},
+        "claude-sonnet-4-20250514": {"temperature": 0},
     }
     if os.getenv("ANTHROPIC_API_KEY")
     else {}

@@ -18,7 +18,21 @@ SUPPORTED_MODELS = (
         "gemini-1.5-flash-002": {"temperature": 0, "location": "europe-west3"},
         "gemini-2.0-flash-001": {"temperature": 0, "location": "europe-west1"},
         "gemini-2.0-flash-lite-001": {"temperature": 0, "location": "europe-west1"},
-        "gemini-2.5-pro-preview-03-25": {"temperature": 0, "location": "us-central1"},
+        "gemini-2.5-flash-lite": {
+            "location": "global",
+            "temperature": 1,
+            "max_output_tokens": 65535,
+        },
+        "gemini-2.5-flash": {
+            "location": "global",
+            "temperature": 1,
+            "max_output_tokens": 65535,
+        },
+        "gemini-2.5-pro": {
+            "location": "global",
+            "temperature": 1,
+            "max_output_tokens": 65535,
+        },
     }
     if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or check_metadata_server_dns()
     else {}
