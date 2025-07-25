@@ -31,7 +31,6 @@ export function ChatHistoryList({
     enabled: !!userId,
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 5,
-    refetchOnMount: false,
   });
 
   const filteredChats =
@@ -54,12 +53,15 @@ export function ChatHistoryList({
         {isLoading &&
           Array.from({ length: 20 }).map((_, i) => {
             return <Skeleton key={i} className="w-full h-12" />;
-          })
-        }
-        {!isLoading && filteredChats.length > 0 && (
+          })}
+        {!isLoading &&
+          filteredChats.length > 0 &&
           filteredChats.map((chat, i) => {
             return (
-              <div key={i} className="transition-opacity duration-500 ease-in-out">
+              <div
+                key={i}
+                className="transition-opacity duration-500 ease-in-out"
+              >
                 <ChatListItem
                   key={i}
                   chat={chat}
@@ -70,8 +72,7 @@ export function ChatHistoryList({
                 />
               </div>
             );
-          })
-        )}
+          })}
         {!isLoading && filteredChats.length === 0 && (
           <div className="p-8 text-center">
             <p className="text-xs text-slate-500 dark:text-slate-400">

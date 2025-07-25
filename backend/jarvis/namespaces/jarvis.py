@@ -1,18 +1,17 @@
-import os
-from typing import Optional
-from uuid import uuid4
+from typing import Any, Optional, cast
 from jarvis.chat.chat_title import create_chat_title
 from jarvis.context.context import FaithfullnessParams
 from jarvis.graphrag.graphrag import query_documents
 import logging
 from dotenv import load_dotenv
-import json
 from jarvis.graphrag.workflow import execute_workflow
+from jarvis.messages.type import Message, TextContent
 from jarvis.messages.utils import (
     build_system_message,
-    build_user_message,
+    convert_to_langchain_message,
     new_server_message,
 )
+from jarvis.models import ALL_SUPPORTED_MODELS
 from jarvis.tools.tools import bootstrap_tools
 from jarvis.agent.base import build_graph
 from jarvis.namespaces import Base
@@ -22,7 +21,6 @@ from jarvis.queries.query_handlers import (
     get_chat_docs,
     get_chat_model,
     get_doc_tokens,
-    get_message_history,
     read_docs_helper,
     set_chat_model,
     update_chat,
@@ -41,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 class Jarvis(Base):
+
     async def on_join_pack_room(self, sid, data):
         logger.info(f"{sid} requesting to join room for pack {data['room_id']}")
         await self._room_resolver(sid, data["room_id"])
@@ -75,12 +74,14 @@ class Jarvis(Base):
         res = await query_documents(pack_id, query)
         return res["local"]
 
-    async def on_chat_message(self, sid, data):
-        logger.info(f"received message: {data['content']}")
-        d = json.loads(data["data"])
-        chat_id, user_id = d["chat_id"], d["user_id"]
+    async def on_chat_message(self, sid: str, data: Message):
+        logger.info(f"received message: {data}")
+        user_id: str = data["userId"]
+        chat_id: str = data["chatId"]
+        additional_data: dict[str, Any] = cast(dict[str, Any], data.get("data", {}))
+
         # create chat
-        if d.get("first_message"):
+        if additional_data.get("first_message"):
             await self._create_chat(chat_id, user_id, sid)
         # broadcast message to other participants
         await self.emit(
@@ -88,15 +89,21 @@ class Jarvis(Base):
         )
 
         # generate system prompt if necessary
-        messages = []
-        logger.info(f"personality: {d.get('personality', {}).get("name")}")
-        instruction = d.get("personality", {}).get("instructions")
-        chat_doc_ids = d.get("docs", [])
-        personality_doc_ids = d.get("personality", {}).get("doc_ids")
+        messages: list[Message] = []
+        logger.info(
+            f"personality: {additional_data.get('personality', {}).get("name")}"
+        )
+        instruction: Optional[str] = additional_data.get("personality", {}).get(
+            "instructions"
+        )
+        chat_doc_ids: list[str] = additional_data.get("docs", [])
+        personality_doc_ids: Optional[list[str]] = additional_data.get(
+            "personality", {}
+        ).get("doc_ids")
 
         # this is the first message
-        if d.get("first_message") and instruction:
-            personality = d.get("personality", {})
+        if additional_data.get("first_message") and instruction:
+            personality: dict[str, Any] = additional_data.get("personality", {})
             await self._first_message_handler(
                 sid,
                 chat_doc_ids,
@@ -105,23 +112,24 @@ class Jarvis(Base):
                 chat_id,
                 personality,
                 messages,
+                user_id,
             )
 
         # we need to check if we received additional docs
-        if not d.get("first_message") and len(chat_doc_ids) > 0:
-            personality = d.get("personality", {})
+        if not additional_data.get("first_message") and len(chat_doc_ids) > 0:
+            personality: dict[str, Any] = additional_data.get("personality", {})
             await self._additional_docs_handler(
-                sid, chat_id, chat_doc_ids, messages, personality
+                sid, chat_id, chat_doc_ids, messages, personality, user_id
             )
 
         # persist user message
-        await create_message(data, chat_id)
+        await create_message(data)
 
         # start AI message generation
         chat_model: Optional[str] = await get_chat_model(chat_id)
         logger.info(f"{chat_model=}")
         model_selection = ""
-        if not chat_model:
+        if not chat_model or chat_model not in ALL_SUPPORTED_MODELS:
             model_selection: str = await get_model_selection(user_id)
         sess = await self.get_session(sid, self.namespace)
         model = model_factory(
@@ -132,12 +140,14 @@ class Jarvis(Base):
             await set_chat_model(chat_id, model["model_name"])
 
         ctx = Context()
-        tool_selection = d.get("personality", {}).get("tools", [])
-        ctx.question_pack = d.get("question_pack")
-        ctx.document_pack = d.get("document_pack")
+        tool_selection: list[str] = additional_data.get("personality", {}).get(
+            "tools", []
+        )
+        ctx.question_pack = additional_data.get("question_pack")
+        ctx.document_pack = additional_data.get("document_pack")
         tools = bootstrap_tools(ctx=ctx, tool_names=tool_selection)
         app = await build_graph(model["model_impl"], tools, chat_id)  # type: ignore
-        messages.extend(build_user_message(data))
+        messages.append(data)
         resp = new_server_message(chat_id, user_id)
         if (
             messages[0]["role"] == "system"
@@ -149,21 +159,27 @@ class Jarvis(Base):
             messages[0]["role"] = "user"
         stream_future = self.stream_response(app, messages, resp, chat_id)
         await self.task_runner(
+            sid,
             stream_future,
             chat_id,
             resp,
-            calculate_faithfullness=d.get("detect_hallucination"),
+            calculate_faithfullness=additional_data.get("detect_hallucination", False),
             faithfullness_params=FaithfullnessParams(
                 ctx=ctx,
-                user_message=data["content"],
+                user_message="".join(
+                    map(
+                        lambda x: cast(TextContent, x)["text"],
+                        filter(lambda x: x["type"] == "text", data["content"]),
+                    )
+                ),
                 llm=model["model_impl"],
             ),
         )
         # finalize and wrap things up
-        if d.get("first_message"):
+        if additional_data.get("first_message"):
             # create automatic chat title
             title = await create_chat_title(
-                model, [messages[1]["content"], resp.content]  # type: ignore
+                model, [convert_to_langchain_message(messages[1]), convert_to_langchain_message(resp)]  # type: ignore
             )  # exclude system message
             await update_chat_title(chat_id, title)
             await self.emit(
@@ -173,11 +189,11 @@ class Jarvis(Base):
                 namespace=self.namespace,
             )
 
-    async def on_join_chat_room(self, sid, data):
+    async def on_join_chat_room(self, sid: str, data: dict[str, Any]):
         logger.info(f"{sid} requesting to join chat room {data['room_id']}")
         await self._room_resolver(sid, data["room_id"])
 
-    async def _create_chat(self, chat_id, user_id, sid):
+    async def _create_chat(self, chat_id: str, user_id: str, sid: str):
         await create_chat(chat_id, user_id)
         await self.save_session(
             sid, {"chat_id": chat_id, "user_id": user_id}, namespace=self.namespace
@@ -190,13 +206,14 @@ class Jarvis(Base):
 
     async def _first_message_handler(
         self,
-        sid,
-        chat_doc_ids,
-        instruction,
-        personality_doc_ids,
-        chat_id,
-        personality,
-        messages,
+        sid: str,
+        chat_doc_ids: list[str],
+        instruction: str,
+        personality_doc_ids: Optional[list[str]],
+        chat_id: str,
+        personality: dict[str, Any],
+        messages: list[Message],
+        user_id: str,
     ):
         logger.info("saving doc ids to session...")
         current_sess = await self.get_session(sid, self.namespace)
@@ -213,18 +230,9 @@ class Jarvis(Base):
         system_message_content = (
             f"{instruction}\n\nDOCUMENTS:\n\n{docs}" if len(docs) > 0 else instruction
         )
-        system_message = build_system_message(system_message_content)
+        system_message = build_system_message(system_message_content, chat_id, user_id)
         messages.append(system_message)
-        create_message_future = create_message(
-            {
-                "id": str(uuid4()),
-                "content": system_message_content,
-                "chat_id": chat_id,
-                "role": "system",
-                "data": json.dumps({}),
-            },
-            chat_id,
-        )
+        create_message_future = create_message(system_message)
         update_chat_future = update_chat(chat_id, personality, chat_doc_ids)
         await asyncio.gather(create_message_future, update_chat_future)
 
@@ -233,8 +241,9 @@ class Jarvis(Base):
         sid: str,
         chat_id: str,
         chat_doc_ids: list[str],
-        messages: list[dict[str, str]],
+        messages: list[Message],
         personality: dict[str, str],
+        user_id: str,
     ):
         sess = await self.get_session(sid, self.namespace)
         existing_docs = sess.get("docs")
@@ -250,17 +259,10 @@ class Jarvis(Base):
             logger.info(f"received new docs: {diff}")
             new_content = await read_docs_helper(diff)  # type: ignore
             new_system_message_content = f"You are given the below additional documents as context.\n\nADDITIONAL DOCUMENTS:\n\n{new_content}"
-            new_system_message = build_system_message(new_system_message_content)
-            messages.append(new_system_message)
-            create_message_future = create_message(
-                {
-                    "id": str(uuid4()),
-                    "content": new_system_message_content,
-                    "chat_id": chat_id,
-                    "role": "system",
-                    "data": json.dumps({}),
-                },
-                chat_id,
+            new_system_message = build_system_message(
+                new_system_message_content, chat_id, user_id
             )
+            messages.append(new_system_message)
+            create_message_future = create_message(new_system_message)
             update_chat_future = update_chat(chat_id, personality, chat_doc_ids)
             await asyncio.gather(create_message_future, update_chat_future)

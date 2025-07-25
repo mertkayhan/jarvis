@@ -3,7 +3,7 @@ from typing import AsyncGenerator, Dict, Sequence
 import logging
 from typing import TypedDict
 from langchain_openai import ChatOpenAI
-from langgraph.graph.graph import CompiledGraph
+from langgraph.graph.state import CompiledStateGraph
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langchain.tools import Tool
 
@@ -34,7 +34,7 @@ class Memory:
 
 async def build_graph(
     llm: ChatOpenAI, tools: Sequence[Tool], chat_id: str
-) -> CompiledGraph:
+) -> CompiledStateGraph:
     mem = Memory()
     if not mem.saver:
         await mem.setup()
@@ -59,11 +59,12 @@ class StreamType(TypedDict):
 
 
 async def runner(
-    app: CompiledGraph, input: Dict, event_name: str
+    app: CompiledStateGraph, input: Dict, event_name: str
 ) -> AsyncGenerator[StreamData]:
     async for event in app.astream_events(
-        input, version="v1", config={"configurable": {"thread_id": event_name}}
+        input, config={"configurable": {"thread_id": event_name}}
     ):
+        print("event:", event)
         kind = event["event"]
         if kind == "on_chat_model_stream":
             content = event["data"]["chunk"].content  # type: ignore

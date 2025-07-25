@@ -71,6 +71,9 @@ export async function loadMessageHistory(userId: string, chatId: string) {
         endpoint: `/api/v1/chats/${chatId}/messages`,
         userId
     });
+
+    console.log("hist:", data);
+
     return data as LoadMessageHistoryResp;
 }
 

@@ -19,6 +19,10 @@ app = FastAPI(
 )
 
 origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(";")
+auth_provider = os.getenv("AUTH0_ISSUER_BASE_URL")
+if auth_provider:
+    origins.append(auth_provider)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
