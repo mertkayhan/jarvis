@@ -3,6 +3,7 @@ import asyncio
 from typing import List, Optional, TypedDict
 import logging
 from dataclasses import dataclass
+from jarvis.messages.type import Message
 from langchain_core.documents import Document
 import json
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -15,10 +16,16 @@ logger = logging.getLogger(__name__)
 
 class Context:
 
-    def __init__(self):
+    def __init__(
+        self,
+        question_pack: Optional[QuestionPack] = None,
+        document_pack: Optional[DocumentPack] = None,
+        system_prompt: Optional[Message] = None,
+    ):
         self.q: asyncio.Queue[ToolContext] = asyncio.Queue()
-        self.question_pack: Optional[QuestionPack] = None
-        self.document_pack: Optional[DocumentPack] = None
+        self.question_pack = question_pack
+        self.document_pack = document_pack
+        self.system_prompt = system_prompt
 
     @property
     def size(self) -> int:
