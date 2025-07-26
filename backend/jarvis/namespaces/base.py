@@ -158,12 +158,19 @@ class Base(socketio.AsyncNamespace, ABC):
             if faithfullness_params and faithfullness_params["ctx"]:
                 msg_context = await faithfullness_params["ctx"].to_json()
                 resp["context"] = msg_context
-                await self.emit(
-                    "server_message",
-                    resp,
-                    room=chat_id,
-                    namespace=self.namespace,
-                )
+                try:
+                    await self.emit(
+                        "server_message",
+                        resp,
+                        room=chat_id,
+                        namespace=self.namespace,
+                    )
+                except Exception as err:
+                    # This will happen if the chat room closed. We will finish the generation and
+                    # persist it to db so on next login client can see the result
+                    logger.warning(
+                        f"Failed to emit stream to chat room - probably room closed: {err}"
+                    )
         except asyncio.CancelledError:
             logger.info("Successfully cancelled task")
         except Exception as err:

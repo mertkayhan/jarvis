@@ -1,13 +1,15 @@
 from __future__ import annotations
-from typing import AsyncGenerator, Dict, Sequence
+from typing import AsyncGenerator, Dict, Optional, Sequence, Union
 import logging
 from typing import TypedDict
+from jarvis.agent.utils import Memory
+from jarvis.context.context import Context
+from jarvis.messages.type import Message
+from langchain_anthropic import ChatAnthropic
+from langchain_google_vertexai import ChatVertexAI
 from langchain_openai import ChatOpenAI
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langchain.tools import Tool
-
-from jarvis.db.db import check_connection_pool, get_connection_pool
+from langchain.tools import StructuredTool
 from .basic import build_basic_chatbot
 from .react import build_react_chatbot
 from dotenv import load_dotenv
@@ -16,24 +18,11 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 
-class Memory:
-    saver = None
-
-    @classmethod
-    async def setup(cls):
-        logger.info("setting up memory")
-        pool = await get_connection_pool()
-        cls.saver = AsyncPostgresSaver(pool)  # type: ignore
-        await cls.saver.setup()
-
-    @classmethod
-    async def check(cls):
-        logger.info("checking db connections...")
-        await check_connection_pool()
-
-
 async def build_graph(
-    llm: ChatOpenAI, tools: Sequence[Tool], chat_id: str
+    llm: Union[ChatOpenAI, ChatVertexAI, ChatAnthropic],
+    tools: Sequence[StructuredTool],
+    chat_id: str,
+    ctx: Context,
 ) -> CompiledStateGraph:
     mem = Memory()
     if not mem.saver:
@@ -41,10 +30,10 @@ async def build_graph(
     await mem.check()
     if len(tools) > 0:
         logger.info("creating react agent")
-        agent_executor = build_react_chatbot(llm, mem, tools, chat_id)
+        agent_executor = build_react_chatbot(llm, mem, tools, chat_id, ctx)
     else:
         logger.info("creating basic chatbot")
-        agent_executor = build_basic_chatbot(llm, mem, chat_id)
+        agent_executor = build_basic_chatbot(llm, mem, chat_id, ctx)
     return agent_executor
 
 
@@ -64,7 +53,7 @@ async def runner(
     async for event in app.astream_events(
         input, config={"configurable": {"thread_id": event_name}}
     ):
-        print("event:", event)
+        # print("event:", event)
         kind = event["event"]
         if kind == "on_chat_model_stream":
             content = event["data"]["chunk"].content  # type: ignore
