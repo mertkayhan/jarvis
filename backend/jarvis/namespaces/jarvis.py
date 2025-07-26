@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Optional, cast
+from typing import Any, AsyncGenerator, Literal, Optional, cast
 from jarvis.chat.chat_title import create_chat_title
 from jarvis.context.context import FaithfullnessParams
 from jarvis.graphrag.graphrag import query_documents
@@ -13,7 +13,6 @@ from jarvis.messages.utils import (
     new_server_message,
 )
 from jarvis.models import ALL_SUPPORTED_MODELS
-from jarvis.models.type import Model
 from jarvis.tools.tools import bootstrap_tools
 from jarvis.agent.base import build_graph
 from jarvis.namespaces import Base
@@ -58,13 +57,15 @@ class GenerationManager:
         except asyncio.QueueEmpty:
             logger.warning(f"queue should not be empty - internal error")
 
-    async def acquire(self) -> bool:
+    async def acquire_nowait(self) -> bool:
         try:
             self.generation_queue[self.chat_id].put_nowait(None)
             return True
         except asyncio.QueueFull:
-            await self.generation_queue[self.chat_id].put(None)
             return False
+
+    async def acquire(self):
+        return await self.generation_queue[self.chat_id].put(None)
 
 
 class Jarvis(Base):
@@ -103,16 +104,13 @@ class Jarvis(Base):
         res = await query_documents(pack_id, query)
         return res["local"]
 
-    def generation_context(self, chat_id: str):
-        pass
-
     async def on_chat_message(self, sid: str, data: Message):
         logger.info(f"received message: {data}")
         user_id: str = data["userId"]
         chat_id: str = data["chatId"]
 
         run_manager = GenerationManager(chat_id)
-        success = await run_manager.acquire()
+        success = await run_manager.acquire_nowait()
 
         if not success:
             await self.emit(
@@ -122,6 +120,8 @@ class Jarvis(Base):
                     "chatId": chat_id,
                 },
             )
+            await run_manager.acquire()
+
         # we can only one generation per chat, otherwise it's very racey
         async with run_manager:
             additional_data: dict[str, Any] = cast(dict[str, Any], data.get("data", {}))
