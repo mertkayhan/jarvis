@@ -116,11 +116,18 @@ class Jarvis(Base):
             await self.emit(
                 "server_message",
                 {
-                    "content": [TextContent(type="text", text="<paused>")],
+                    "content": [TextContent(type="text", text="<queued>")],
                     "chatId": chat_id,
                 },
             )
             await run_manager.acquire()
+            await self.emit(
+                "server_message",
+                {
+                    "content": [TextContent(type="text", text="<start>")],
+                    "chatId": chat_id,
+                },
+            )
 
         # we can only one generation per chat, otherwise it's very racey
         async with run_manager:
