@@ -3,11 +3,12 @@
 import Loading from '@/app/loading';
 import { Chat } from '@/components/chat/chat';
 import { Sidebar } from '@/components/sidebar/chat-sidebar';
-import { useParams } from 'next/navigation';
+import { redirect, useParams, useRouter } from 'next/navigation';
 import { useAuthToken } from '@/lib/hooks/use-auth-token';
 import { useSocket } from '@/lib/hooks/use-socket';
 import { Reducer, useEffect, useReducer, useState } from 'react';
 import { chatGeneratingReducer } from '@/components/chat/chat-reducers';
+import { useUser } from '@auth0/nextjs-auth0/client';
 
 
 export default function Page() {
@@ -17,6 +18,9 @@ export default function Page() {
     const [userId, setUserId] = useState<string | null>(null);
     const socket = useSocket({ socketNamespace: "jarvis", userId: userId, token });
     const [chatGenerating, chatGeneratingDispatch] = useReducer<Reducer<Record<string, boolean>, any>>(chatGeneratingReducer, {});
+    const { user, error, isLoading } = useUser();
+    const router = useRouter();
+
 
     useEffect(() => {
         if (typeof window !== "undefined" && params?.userId) {
@@ -25,8 +29,16 @@ export default function Page() {
     }, [params?.userId]);
 
 
-    if (!id || !userId) {
+    if (!id || !userId || isLoading) {
         return <Loading />;
+    }
+
+    if (error) {
+        router.push("/forbidden");
+    }
+
+    if (!user) {
+        redirect("/api/auth/login");
     }
 
     return (

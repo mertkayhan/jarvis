@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { KnowledgeMenu } from "@/components/knowledge/knowledge-selection-menu";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import Loading from "@/app/loading";
 import { IconSpinner } from "@/components/ui/icons";
-import { useRouter } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/sidebar/chat-sidebar";
 import { DocumentPack, QuestionPack } from "@/lib/types";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -74,7 +74,15 @@ export default function Page() {
     if (isLoading) {
         return (
             <Loading />
-        )
+        );
+    }
+
+    if (error) {
+        router.push("/forbidden");
+    }
+
+    if (!user) {
+        redirect("/api/auth/login");
     }
 
     return (
@@ -108,15 +116,15 @@ export default function Page() {
                             </span>
                             <div className="w-full h-full flex flex-col space-y-2">
                                 <Label>Name</Label>
-                                <Input className="w-full text-sm" value={name} onChange={(e) => { setName(e.target.value) }} />
+                                <Input className="w-full text-sm" value={name} onChange={(e) => { setName(e.target.value); }} />
                                 <Label>Description</Label>
-                                <Input className="w-full text-sm" value={description} onChange={(e) => { setDescription(e.target.value) }} />
+                                <Input className="w-full text-sm" value={description} onChange={(e) => { setDescription(e.target.value); }} />
                                 <Label>Instructions</Label>
                                 <textarea
                                     className="flex bg-transparent border resize-none w-full focus:outline-none p-2 text-sm rounded-lg"
                                     rows={4}
                                     value={instructions}
-                                    onChange={(e) => { setInstructions(e.target.value) }}
+                                    onChange={(e) => { setInstructions(e.target.value); }}
                                 />
                                 <Label className="pt-2">Settings</Label>
                                 <PersonalitySettings setGloballyAvailable={setGloballyAvailable} setIsDefault={setIsDefault} />
@@ -163,5 +171,5 @@ export default function Page() {
                 </main>
             </div>
         </TooltipProvider>
-    )
+    );
 }

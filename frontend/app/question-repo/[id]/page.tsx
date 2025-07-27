@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import Loading from "@/app/loading";
 import { getPack, ListPacksResp, updatePack } from "@/components/question-packs/question-packs-actions";
@@ -11,7 +11,7 @@ import { QuestionPack } from "@/lib/types";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { Label } from "@radix-ui/react-dropdown-menu";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams, useRouter } from "next/navigation";
+import { redirect, useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 function usePackDetails(id: string, userId: string) {
@@ -24,7 +24,7 @@ function usePackDetails(id: string, userId: string) {
 }
 
 export default function Page() {
-    const params = useParams<{ id: string }>();
+    const params = useParams<{ id: string; }>();
     const { user, error, isLoading } = useUser();
     const { pack, packLoading } = usePackDetails(params.id, user?.email as string);
     const [currentName, setCurrentName] = useState("");
@@ -62,7 +62,15 @@ export default function Page() {
     if (isLoading || packLoading) {
         return (
             <Loading />
-        )
+        );
+    }
+
+    if (error) {
+        router.push("/forbidden");
+    }
+
+    if (!user) {
+        redirect("/api/auth/login");
     }
 
     return (

@@ -20,7 +20,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useParams, useRouter } from "next/navigation";
+import { redirect, useParams, useRouter } from "next/navigation";
 import { KnowledgeMenu } from "@/components/knowledge/knowledge-selection-menu";
 import { KnowledgeDropdown } from "@/components/knowledge/knowledge-dropdown";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,7 @@ function usePersonalityDetails(id: string, userId: string | undefined | null) {
 }
 
 export default function Page() {
-  const params = useParams<{ id: string }>();
+  const params = useParams<{ id: string; }>();
   const { user, error, isLoading } = useUser();
   const { toast } = useToast();
   const [kind, setKind] = useState("");
@@ -137,6 +137,14 @@ export default function Page() {
 
   if (isLoading || personalityLoading) {
     return <Loading />;
+  }
+
+  if (error) {
+    router.push("/forbidden");
+  }
+
+  if (!user) {
+    redirect("/api/auth/login");
   }
 
   return (
