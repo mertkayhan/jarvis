@@ -47,7 +47,6 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
       AUTH0_SECRET: ${AUTH0_SECRET}
-      AUTH0_ISSUER_BASE_URL: ${AUTH0_ISSUER_BASE_URL}
     volumes:
       - jarvis_data:/tmp/jarvis
       - ${GOOGLE_APPLICATION_CREDENTIALS}:/creds/jarvis-backend.json
