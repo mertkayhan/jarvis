@@ -1,4 +1,4 @@
-'use server'
+'use server';
 
 import { DocumentPack, UserDocument } from "@/lib/types";
 import postgres from "postgres";
@@ -27,7 +27,7 @@ export async function getPack(id: string, userId: string) {
 }
 
 export interface ListDocumentPacksResp {
-    packs: DocumentPack[]
+    packs: DocumentPack[];
 }
 
 export async function listPacks() {
@@ -57,9 +57,9 @@ async function listPacksHandler() {
 }
 
 interface CreatePackResp {
-    id: string
-    name: string
-    description: string
+    id: string;
+    name: string;
+    description: string;
 }
 
 export async function createPack(id: string, name: string, description: string, owner: string) {
@@ -87,9 +87,9 @@ async function createPackHandler(id: string, name: string, description: string, 
 }
 
 interface UpdatePackResp {
-    id: string
-    name: string
-    description: string
+    id: string;
+    name: string;
+    description: string;
 }
 
 export async function updatePack(id: string, name: string, description: string) {
@@ -116,7 +116,7 @@ async function updatePackHandler(id: string, name: string, description: string) 
 }
 
 interface DeletePackResp {
-    id: string
+    id: string;
 }
 
 export async function deletePack(id: string) {
@@ -142,7 +142,7 @@ async function deletePackHandler(id: string) {
 }
 
 interface ListPackDocsResp {
-    docs: UserDocument[]
+    docs: UserDocument[];
 }
 
 export async function listDocuments(packId: string) {

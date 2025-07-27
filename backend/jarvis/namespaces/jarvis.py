@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, AsyncGenerator, Literal, Optional, cast
+from typing import Any, Optional, cast
 from jarvis.chat.chat_title import create_chat_title
 from jarvis.context.context import FaithfullnessParams
 from jarvis.graphrag.graphrag import query_documents
@@ -119,6 +119,8 @@ class Jarvis(Base):
                     "content": [TextContent(type="text", text="<queued>")],
                     "chatId": chat_id,
                 },
+                namespace=self.namespace,
+                to=sid,
             )
             await run_manager.acquire()
             await self.emit(
@@ -127,6 +129,8 @@ class Jarvis(Base):
                     "content": [TextContent(type="text", text="<start>")],
                     "chatId": chat_id,
                 },
+                namespace=self.namespace,
+                to=sid,
             )
 
         # we can only one generation per chat, otherwise it's very racey
