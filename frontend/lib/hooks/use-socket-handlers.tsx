@@ -6,6 +6,7 @@ import { useDefaultPersonality } from "./use-default-personality";
 import { useMessageHistory } from "./use-message-history";
 import { useQueryClient } from "@tanstack/react-query";
 import { ListChatsResp } from "@/components/chat-sidebar/chat-sidebar-actions";
+import { useToast } from "./use-toast";
 
 export function useSocketHandlers(
   socket: Socket | null,
@@ -20,6 +21,7 @@ export function useSocketHandlers(
   setSelectedQuestionPack: Dispatch<SetStateAction<QuestionPack | null>>,
   setSelectedDocumentPack: Dispatch<SetStateAction<DocumentPack | null>>
 ) {
+  const toastIdMapping = useRef<Record<string, string>>({});
   const movedUp = useRef(false);
   const chatTitle = useChatTitle(userId, id);
   const chatTitleRef = useRef<string | null>(null);
@@ -46,6 +48,7 @@ export function useSocketHandlers(
     );
     movedUp.current = true;
   };
+  const { toast, dismiss } = useToast();
 
   useEffect(() => {
     const initializeChat = async () => {
@@ -179,16 +182,33 @@ export function useSocketHandlers(
       if (!resp) {
         return;
       }
-      if (resp.content && "text" in resp.content[0] && resp.content[0].text === "<done>") {
-        dispatch({
-          type: "UPDATE_CHAT_STATUS",
-          id: resp.chatId,
-          status: false,
-        });
-        if (!movedUp.current && chatTitleRef.current) {
-          moveChatUp(resp.chatId);
+      if (resp.content && "text" in resp.content[0]) {
+        if (resp.content[0].text === "<done>") {
+          dispatch({
+            type: "UPDATE_CHAT_STATUS",
+            id: resp.chatId,
+            status: false,
+          });
+          if (!movedUp.current && chatTitleRef.current) {
+            moveChatUp(resp.chatId);
+          }
+          return;
+        } else if (resp.content[0].text === "<queued>") {
+          console.log("message is queued");
+          const { id } = toast({
+            title: "Message queued",
+            description: "There is another generation in progress, once completed your message will be processed",
+            duration: Infinity,
+          });
+          toastIdMapping.current[resp.chatId] = id;
+          return;
+        } else if (resp.content[0].text === "<start>") {
+          console.log("message is now being processed");
+          dismiss(toastIdMapping.current[resp.chatId]);
+          delete toastIdMapping.current[resp.chatId];
+          return;
         }
-        return;
+
       }
       if (resp.chatId !== id) {
         return;
@@ -212,6 +232,11 @@ export function useSocketHandlers(
     });
 
     socket.on("chat_broadcast", (msg: Message) => {
+      dispatch({
+        type: "UPDATE_CHAT_STATUS",
+        id: msg.chatId,
+        status: true,
+      });
       setMessages((currentMessages) => [...(currentMessages || []), msg]);
       setCurrentContext(msg.context);
     });

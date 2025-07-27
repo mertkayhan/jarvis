@@ -72,7 +72,7 @@ export async function loadMessageHistory(userId: string, chatId: string) {
         userId
     });
 
-    console.log("hist:", data);
+    // console.log("hist:", data);
 
     return data as LoadMessageHistoryResp;
 }

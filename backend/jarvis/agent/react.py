@@ -1,7 +1,11 @@
 from __future__ import annotations
+from jarvis.agent.utils import Memory
+from jarvis.context.context import Context
+from jarvis.messages.type import Message
+from jarvis.messages.utils import convert_to_langchain_message
 from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain.tools import Tool
+from langchain.tools import StructuredTool
 from typing import (
     Annotated,
     Any,
@@ -10,6 +14,7 @@ from typing import (
     Dict,
     List,
     Literal,
+    Optional,
     Sequence,
     TypedDict,
     Union,
@@ -29,11 +34,13 @@ class AgentState(TypedDict):
 
     # add_messages is a reducer
     # See https://langchain-ai.github.io/langgraph/concepts/low_level/#reducers
-    messages: Annotated[Sequence[BaseMessage], add_messages]
+    messages: Annotated[list[BaseMessage], add_messages]
 
 
 async def tool_call_handler(
-    fun: Callable[[Any], Awaitable[Union[Dict[str, Any] ,str]]], context: Dict[str, Any], model: str
+    fun: Callable[[Any], Awaitable[Union[Dict[str, Any], str]]],
+    context: Dict[str, Any],
+    model: str,
 ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
     res = await fun(context["args"])
     if not isinstance(res, (str, dict)):
@@ -41,7 +48,7 @@ async def tool_call_handler(
     if isinstance(res, str):
         return {
             "role": "tool",
-            "content": res, 
+            "content": res,
             "tool_call_id": context["id"],
             "name": context["name"],
         }
@@ -81,7 +88,7 @@ def flatten(x: List):
 
 # Define our tool node
 async def tool_node(
-    state: AgentState, tools_by_name: Dict[str, Tool], model: str
+    state: AgentState, tools_by_name: Dict[str, StructuredTool], model: str
 ) -> Dict[str, List[ToolMessage]]:
 
     # print("tool calls:", state["messages"][-1].tool_calls)
@@ -105,7 +112,11 @@ async def tool_node(
             if isinstance(msg, dict) and msg.get("role") == "user":
                 user_message_content.extend(msg["content"])
         if len(user_message_content) > 0:
-            tool_messages = [msg for msg in flat_outputs if isinstance(msg, dict) and msg.get("role") == "tool"]
+            tool_messages = [
+                msg
+                for msg in flat_outputs
+                if isinstance(msg, dict) and msg.get("role") == "tool"
+            ]
             flat_outputs = tool_messages + [
                 {"role": "user", "content": user_message_content}
             ]
@@ -116,16 +127,15 @@ async def tool_node(
 
 # Define the node that calls the model
 async def call_model(
-    state: AgentState, config: RunnableConfig, model: BaseChatModel
+    state: AgentState,
+    config: RunnableConfig,
+    model: BaseChatModel,
+    ctx: Context,
 ) -> Dict[str, List[BaseMessage]]:
-    # this is similar to customizing the create_react_agent with 'prompt' parameter, but is more flexible
-    # TODO: add system prompt explicitly
-    # system_prompt = SystemMessage(
-    #     "You are a helpful AI assistant, please respond to the users query to the best of your ability!"
-    # )
-    # response = model.invoke([system_prompt] + state["messages"], config)
     # TODO: handle chat history compaction here
-    res = await model.ainvoke(state["messages"], config)
+
+    s = [convert_to_langchain_message(ctx.system_prompt)] if ctx.system_prompt else []
+    res = await model.ainvoke(s + state["messages"], config)
     # We return a list, because this will get added to the existing list
     return {"messages": [res]}
 
@@ -143,7 +153,11 @@ def should_continue(state: AgentState) -> Literal["end"] | Literal["continue"]:
 
 
 def build_react_chatbot(
-    llm: BaseChatModel, mem, tools: Sequence[Tool], chat_id: str
+    llm: Union[ChatOpenAI, ChatVertexAI, ChatAnthropic],
+    mem: Memory,
+    tools: Sequence[StructuredTool],
+    chat_id: str,
+    ctx: Context,
 ) -> CompiledStateGraph:
     if isinstance(llm, ChatOpenAI):
         model = "openai"
@@ -163,7 +177,7 @@ def build_react_chatbot(
     async def call_model_partial(
         state: AgentState, config: RunnableConfig
     ) -> Dict[str, List[BaseMessage]]:
-        return await call_model(state, config, llm)
+        return await call_model(state, config, llm, ctx)
 
     # Define a new graph
     workflow = StateGraph(AgentState)
