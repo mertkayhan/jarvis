@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
-import { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { withMiddlewareAuthRequired, getSession } from '@auth0/nextjs-auth0/edge';
 
 
@@ -13,7 +13,7 @@ async function middleware(req: NextRequest) {
     const session = await getSession(req, resp);
 
     if (!session) {
-        return NextResponse.redirect(new URL('/api/auth/login', req.url));
+        return NextResponse.redirect(new URL('/api/auth/login', req.url.replace("/version.json", "")));
     }
 }
 
@@ -34,4 +34,4 @@ export const config = {
             ],
         },
     ],
-}
+};

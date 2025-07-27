@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import Loading from "@/app/loading";
 import { createPack, ListPacksResp } from "@/components/question-packs/question-packs-actions";
@@ -11,7 +11,7 @@ import { useToast } from "@/lib/hooks/use-toast";
 import { uuidv4 } from "@/lib/utils";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function Page() {
@@ -26,7 +26,7 @@ export default function Page() {
         onSuccess: async (resp) => {
             await queryClient.setQueryData(["listPacks"], (old: ListPacksResp) => {
                 return { packs: [...old?.packs, { ...resp }] };
-            })
+            });
             toast({ title: "Successfully created question pack" });
             setName("");
             setDescription("");
@@ -41,8 +41,17 @@ export default function Page() {
     if (isLoading) {
         return (
             <Loading />
-        )
+        );
     }
+
+    if (error) {
+        router.push("/forbidden");
+    }
+
+    if (!user) {
+        redirect("/api/auth/login");
+    }
+
     return (
         <div className="flex h-full">
             <div

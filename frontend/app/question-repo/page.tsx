@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import { Sidebar } from "@/components/sidebar/chat-sidebar"
-import { useEffect } from "react"
-import { Questions } from "@/components/question-packs/questions"
-import { useSearchParams, useRouter } from "next/navigation"
-import { useToast } from "@/lib/hooks/use-toast"
+import { Sidebar } from "@/components/sidebar/chat-sidebar";
+import { useEffect } from "react";
+import { Questions } from "@/components/question-packs/questions";
+import { useSearchParams, useRouter, redirect } from "next/navigation";
+import { useToast } from "@/lib/hooks/use-toast";
 import { useUser } from '@auth0/nextjs-auth0/client';
-import Loading from "@/app/loading"
+import Loading from "@/app/loading";
 
 export default function Page() {
     const searchParams = useSearchParams();
@@ -21,7 +21,7 @@ export default function Page() {
         // console.log("page no", pageNo);
         // console.log("pack id", packId);
         if (pageNo && Number(pageNo) > 0) {
-            router.replace(`?pack_id=${packId}&page=${pageNo}`)
+            router.replace(`?pack_id=${packId}&page=${pageNo}`);
         } else if (pageNo && Number(pageNo) <= 0) {
             toast({
                 title: "Page error",
@@ -29,18 +29,22 @@ export default function Page() {
                 variant: "destructive"
             });
         } else if (!pageNo) {
-            router.replace(`?pack_id=${packId}&page=1`)
+            router.replace(`?pack_id=${packId}&page=1`);
         }
     }, [searchParams]);
 
     if (isLoading) {
         return (
             <Loading />
-        )
+        );
     }
 
     if (error || !searchParams?.get("pack_id") || !searchParams?.get("page")) {
         router.push("/forbidden");
+    }
+
+    if (!user) {
+        redirect("/api/auth/login");
     }
 
     return (
@@ -65,5 +69,5 @@ export default function Page() {
                 />
             </div>
         </div>
-    )
+    );
 }

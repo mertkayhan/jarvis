@@ -6,7 +6,7 @@ import { chatIdReducer } from "@/components/chat/chat-reducers";
 import { useAuthToken } from "@/lib/hooks/use-auth-token";
 import { useSocket } from "@/lib/hooks/use-socket";
 import { useUser } from "@auth0/nextjs-auth0/client";
-import { useRouter } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import { Reducer, useEffect, useReducer } from "react";
 
 export default function Page() {
@@ -33,6 +33,10 @@ export default function Page() {
 
   if (error) {
     router.push("/forbidden");
+  }
+
+  if (!user) {
+    redirect("/api/auth/login");
   }
 
   return (

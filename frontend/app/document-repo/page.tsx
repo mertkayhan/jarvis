@@ -18,7 +18,7 @@ import { uuidv4 } from "@/lib/utils";
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { DialogTitle } from "@radix-ui/react-dialog";
 import { InvalidateQueryFilters, RefetchQueryFilters, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter, useSearchParams } from "next/navigation";
+import { redirect, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { HashLoader } from "react-spinners";
 import remarkGfm from "remark-gfm";
@@ -220,6 +220,10 @@ export default function Page() {
 
     if (userError || !params.get("pack_id")) {
         router.push("/forbidden");
+    }
+
+    if (!user) {
+        redirect("/api/auth/login");
     }
 
     return (
