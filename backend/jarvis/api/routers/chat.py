@@ -48,63 +48,6 @@ async def generate_chat_title(chat_id: str) -> AutoGenChatTitle:
         )
 
 
-class UserChat(BaseModel):
-    id: UUID
-    owner_email: str
-    title: Optional[str] = None
-    created_at: datetime.datetime
-    updated_at: datetime.datetime
-
-
-class UserChats(BaseModel):
-    chats: List[UserChat]
-
-
-@router.get(
-    "",
-    response_model=UserChats,
-    tags=["chat"],
-    include_in_schema=False,
-)
-@router.get(
-    "/",
-    response_model=UserChats,
-    tags=["chat"],
-)
-async def get_all_user_chats(req: Request, deleted: bool = False) -> UserChats:
-    user_id: str = req.state.claims["sub"]
-    query = """
-        SELECT 
-            id,
-            owner_email,
-            title,
-            created_at, 
-            updated_at
-        FROM common.chat_history 
-        WHERE owner_email = %(user_id)s AND deleted = %(deleted)s
-        ORDER BY updated_at DESC
-    """
-    try:
-        pool = await get_connection_pool()
-        async with pool.connection() as conn:
-            async with conn.cursor(row_factory=dict_row) as cur:
-                resp = await cur.execute(
-                    query,
-                    {
-                        "user_id": user_id,
-                        "deleted": deleted,
-                    },
-                )
-                res = await resp.fetchall()
-                return UserChats(chats=[UserChat(**r) for r in res])
-    except Exception as err:
-        logger.error(f"failed to fetch user chats: {err}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="failed to fetch user chats, please refer to server logs for more information",
-        )
-
-
 class DeletedChats(BaseModel):
     id: List[UUID]
 
