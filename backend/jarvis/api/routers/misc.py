@@ -1,16 +1,21 @@
 import datetime
 from typing import Annotated, Optional
+from psycopg import AsyncConnection
 from pydantic import BaseModel
 from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
 import logging
 from psycopg.rows import dict_row
+from jarvis.api.routers.personality import Personality
 from jarvis.blob_storage import resolve_storage
+from jarvis.chat.utils import UserChat, get_all_user_chats
 from jarvis.db.db import get_connection_pool
+from jarvis.document.utils import UserDocument, get_user_docs
 from jarvis.document_parsers.parser import resolve_parser
 from jarvis.models import ALL_SUPPORTED_MODELS
 from jarvis.models.models import get_default_model
 from jarvis.queries.query_handlers import insert_doc
 from jarvis.tools import ALL_AVAILABLE_TOOLS
+from personality.personality import get_user_personalities
 
 
 router = APIRouter()
@@ -22,27 +27,36 @@ class AIModel(BaseModel):
     description: Optional[str] = None
 
 
-class UserModels(BaseModel):
-    models: list[AIModel]
+class UserData(BaseModel):
+    available_models: list[AIModel]
+    available_tools: list[str]
+    available_personalities: list[Personality]
+    available_documents: list[UserDocument]
+    default_personality: Personality
+    model_selection: str
+    chat_history: list[UserChat]
 
 
-@router.get(
-    "/api/v1/models",
-    response_model=UserModels,
-)
-async def get_available_models() -> UserModels:
-    return UserModels(
-        models=[AIModel(name=model_name) for model_name in ALL_SUPPORTED_MODELS]
-    )
-
-
-class ToolSet(BaseModel):
-    tools: list[str]
-
-
-@router.get("/api/v1/tools", response_model=ToolSet)
-async def get_available_tools() -> ToolSet:
-    return ToolSet(tools=ALL_AVAILABLE_TOOLS)
+@router.get("/api/v1/user/data")
+async def get_user_data(req: Request):
+    available_models = [AIModel(name=model_name) for model_name in ALL_SUPPORTED_MODELS]
+    available_tools = ALL_AVAILABLE_TOOLS
+    user_id: str = req.state.claims["sub"]
+    pool = await get_connection_pool()
+    async with pool.connection() as conn:
+        p = await get_user_personalities(user_id, conn)
+        model_selection = await get_user_model_selection(user_id, conn)
+        chat_history = await get_all_user_chats(user_id, conn)
+        available_docs = await get_user_docs(user_id, conn)
+        return UserData(
+            available_models=available_models,
+            available_tools=available_tools,
+            available_personalities=p.personalities,
+            available_documents=available_docs,
+            default_personality=p.default_personality,
+            model_selection=model_selection,
+            chat_history=chat_history,
+        )
 
 
 class UploadResult(BaseModel):
@@ -127,13 +141,7 @@ async def upload_document(
         return UploadResult(success=False, message="document processing failed")
 
 
-class UserModel(BaseModel):
-    model: str
-
-
-@router.get("/api/v1/model-selection", response_model=UserModel)
-async def get_user_model_selection(req: Request) -> UserModel:
-    user_id: str = req.state.claims["sub"]
+async def get_user_model_selection(user_id: str, conn: AsyncConnection) -> str:
     query = """
         SELECT 
             model_name,
@@ -141,24 +149,14 @@ async def get_user_model_selection(req: Request) -> UserModel:
         FROM common.model_selection 
         WHERE user_id = (%s)
     """
-    try:
-        pool = await get_connection_pool()
-        async with pool.connection() as conn:
-            async with conn.cursor(row_factory=dict_row) as cur:
-                resp = await cur.execute(query, (user_id,))
-                res = await resp.fetchall()
-                return UserModel(
-                    model=(
-                        res[0]["model_name"]
-                        if res and res[0]["model_name"] in ALL_SUPPORTED_MODELS
-                        else get_default_model()
-                    )
-                )
-    except Exception as err:
-        logger.error(f"failed to get user model: {err}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="failed to get user model, for more details please refer to the server logs",
+
+    async with conn.cursor(row_factory=dict_row) as cur:
+        resp = await cur.execute(query, (user_id,))
+        res = await resp.fetchall()
+        return (
+            res[0]["model_name"]
+            if res and res[0].get("model_name") in ALL_SUPPORTED_MODELS
+            else get_default_model()
         )
 
 
